@@ -119,15 +119,11 @@
 .preview-container {
   flex: 1;
   position: relative;
-  margin: 1rem;
+  margin: 0;
   background: var(--white);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border-right: 1px solid var(--gray-200);
   overflow: hidden;
   transition: max-width 0.3s ease;
-  /* Center the preview when viewport is constrained */
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .preview-container.comment-mode {
