@@ -145,3 +145,13 @@ export async function verifyAdminPassword(password) {
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD
   return password === adminPassword
 }
+
+// Track when a client views a preview
+export async function recordProjectView(projectId) {
+  const { error } = await supabase
+    .from('projects')
+    .update({ last_viewed_at: new Date().toISOString() })
+    .eq('id', projectId)
+
+  if (error) console.error('Failed to record view:', error)
+}

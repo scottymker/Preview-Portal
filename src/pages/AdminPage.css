@@ -158,6 +158,15 @@
   color: var(--gray-500);
 }
 
+.meta-item.viewed {
+  color: var(--success);
+}
+
+.meta-item.not-viewed {
+  color: var(--gray-400);
+  font-style: italic;
+}
+
 /* Link Box */
 .project-link-box {
   background: var(--gray-100);

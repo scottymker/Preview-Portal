@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllProjectsWithComments, createProject, updateProject, deleteProject, verifyAdminPassword, updateComment, deleteComment, supabase } from '../lib/supabase'
-import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
@@ -349,6 +349,13 @@ The Dev Side`
                       <span className="meta-item">
                         <MessageCircle size={14} />
                         {project.comments.length} comments
+                      </span>
+                      <span className={`meta-item ${project.last_viewed_at ? 'viewed' : 'not-viewed'}`}>
+                        <Eye size={14} />
+                        {project.last_viewed_at
+                          ? `Viewed ${formatDistanceToNow(new Date(project.last_viewed_at), { addSuffix: true })}`
+                          : 'Not viewed yet'
+                        }
                       </span>
                     </div>
 

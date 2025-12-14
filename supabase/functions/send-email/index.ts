@@ -131,7 +131,7 @@ function getLightProfessionalTemplate(clientName: string, projectName: string, a
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 1px solid #eef1f5;">
-              <img src="https://thedevside.com/logo.png" alt="The Dev Side" style="height: 50px; width: auto;" />
+              <img src="https://thedevside.com/logo.png" alt="The Dev Side" style="height: 80px; width: auto;" />
               <p style="margin: 12px 0 0; color: #6b7280; font-size: 14px;">Preview Portal</p>
             </td>
           </tr>

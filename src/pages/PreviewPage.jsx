@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { getProjectByToken, getCommentsByProject, createComment, updateComment, deleteComment, supabase } from '../lib/supabase'
+import { getProjectByToken, getCommentsByProject, createComment, updateComment, deleteComment, supabase, recordProjectView } from '../lib/supabase'
 import { MessageCircle, X, Send, Check, Trash2, Monitor, Tablet, Smartphone, Download, ChevronRight, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './PreviewPage.css'
@@ -31,6 +31,9 @@ export default function PreviewPage() {
       setProject(projectData)
       const commentsData = await getCommentsByProject(projectData.id)
       setComments(commentsData)
+
+      // Record that client viewed the preview
+      recordProjectView(projectData.id)
     } catch (err) {
       setError('Project not found or link has expired')
     } finally {
