@@ -114,20 +114,43 @@
   justify-content: center;
   overflow: hidden;
   height: calc(100vh - 60px);
-  background: var(--gray-200);
-  padding: 1rem;
+  background: var(--gray-100);
 }
 
 /* Preview Container */
 .preview-container {
   position: relative;
   background: var(--white);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius);
   overflow: hidden;
   transition: max-width 0.3s ease, width 0.3s ease;
-  box-shadow: var(--shadow-lg);
   height: 100%;
+  width: 100%;
+}
+
+/* Desktop view - full width, no styling */
+.preview-container.desktop-view {
+  max-width: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Tablet/Mobile views - centered with device frame effect */
+.preview-container.tablet-view,
+.preview-container.mobile-view {
+  margin: 1rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  height: calc(100% - 2rem);
+}
+
+.preview-container.tablet-view {
+  max-width: 768px;
+}
+
+.preview-container.mobile-view {
+  max-width: 375px;
 }
 
 .preview-container.comment-mode {

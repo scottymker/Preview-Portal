@@ -109,12 +109,6 @@ export default function PreviewPage() {
     }
   }
 
-  const viewportWidths = {
-    desktop: '100%',
-    tablet: '768px',
-    mobile: '375px'
-  }
-
   if (loading) {
     return (
       <div className="preview-loading">
@@ -218,8 +212,7 @@ export default function PreviewPage() {
         {/* Preview container */}
         <div
           ref={previewContainerRef}
-          className={`preview-container ${commentMode ? 'comment-mode' : ''}`}
-          style={{ maxWidth: viewportWidths[viewMode] }}
+          className={`preview-container ${viewMode}-view ${commentMode ? 'comment-mode' : ''}`}
           onClick={handlePreviewClick}
         >
           <iframe
