@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getAllInvoices, createInvoice, updateInvoice, deleteInvoice, markInvoicePaid, verifyAdminPassword } from '../lib/supabase'
+import { getAllInvoices, createInvoice, updateInvoice, deleteInvoice, markInvoicePaid, verifyAdminPassword, getAllProjects } from '../lib/supabase'
 import { Plus, X, Check, Trash2, Edit2, Loader2, DollarSign, Clock, CheckCircle, AlertCircle, Send, FileText, ArrowLeft } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import './BillingPage.css'
@@ -14,6 +14,7 @@ export default function BillingPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [filter, setFilter] = useState('all') // all, pending, paid, overdue
+  const [projects, setProjects] = useState([])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -21,10 +22,20 @@ export default function BillingPage() {
     if (isAuth === 'true') {
       setAuthenticated(true)
       loadInvoices()
+      loadProjects()
     } else {
       setLoading(false)
     }
   }, [])
+
+  async function loadProjects() {
+    try {
+      const data = await getAllProjects()
+      setProjects(data || [])
+    } catch (err) {
+      console.error('Failed to load projects:', err)
+    }
+  }
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -409,6 +420,7 @@ export default function BillingPage() {
       {(showCreateModal || editingInvoice) && (
         <InvoiceModal
           invoice={editingInvoice}
+          projects={projects}
           onClose={() => {
             setShowCreateModal(false)
             setEditingInvoice(null)
@@ -421,10 +433,26 @@ export default function BillingPage() {
 }
 
 // Invoice Modal Component
-function InvoiceModal({ invoice, onClose, onSubmit }) {
+function InvoiceModal({ invoice, projects, onClose, onSubmit }) {
   const [lineItems, setLineItems] = useState(
     invoice?.line_items || [{ description: '', quantity: 1, rate: 0 }]
   )
+  const [clientName, setClientName] = useState(invoice?.client_name || '')
+  const [clientEmail, setClientEmail] = useState(invoice?.client_email || '')
+  const [projectName, setProjectName] = useState(invoice?.project_name || '')
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+
+  function handleProjectSelect(projectId) {
+    setSelectedProjectId(projectId)
+    if (projectId) {
+      const project = projects.find(p => p.id === projectId)
+      if (project) {
+        setClientName(project.client_name || '')
+        setClientEmail(project.client_email || '')
+        setProjectName(project.name || '')
+      }
+    }
+  }
 
   function addLineItem() {
     setLineItems([...lineItems, { description: '', quantity: 1, rate: 0 }])
@@ -453,6 +481,25 @@ function InvoiceModal({ invoice, onClose, onSubmit }) {
         </div>
         <form onSubmit={onSubmit}>
           <div className="modal-body">
+            {/* Link to Project */}
+            {!invoice && projects.length > 0 && (
+              <div className="form-group">
+                <label className="label">Link to Project (Optional)</label>
+                <select
+                  className="input"
+                  value={selectedProjectId}
+                  onChange={(e) => handleProjectSelect(e.target.value)}
+                >
+                  <option value="">-- Select a project to auto-fill --</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name} {project.client_name ? `(${project.client_name})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="form-row">
               <div className="form-group">
                 <label className="label">Client Name *</label>
@@ -460,7 +507,8 @@ function InvoiceModal({ invoice, onClose, onSubmit }) {
                   type="text"
                   name="client_name"
                   className="input"
-                  defaultValue={invoice?.client_name}
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
                   required
                 />
               </div>
@@ -470,7 +518,8 @@ function InvoiceModal({ invoice, onClose, onSubmit }) {
                   type="email"
                   name="client_email"
                   className="input"
-                  defaultValue={invoice?.client_email}
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
                 />
               </div>
             </div>
@@ -482,7 +531,8 @@ function InvoiceModal({ invoice, onClose, onSubmit }) {
                   type="text"
                   name="project_name"
                   className="input"
-                  defaultValue={invoice?.project_name}
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
                   required
                 />
               </div>
