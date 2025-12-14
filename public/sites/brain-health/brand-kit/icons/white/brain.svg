@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Left hemisphere -->
+  <ellipse cx="35" cy="45" rx="25" ry="30"/>
+  <path d="M20 35 Q30 30 35 40"/>
+  <path d="M25 50 Q35 45 40 55"/>
+  <!-- Right hemisphere -->
+  <ellipse cx="65" cy="45" rx="25" ry="30"/>
+  <path d="M80 35 Q70 30 65 40"/>
+  <path d="M75 50 Q65 45 60 55"/>
+  <!-- Brain stem -->
+  <path d="M50 75 L50 90"/>
+  <path d="M45 80 L55 80"/>
+</svg>

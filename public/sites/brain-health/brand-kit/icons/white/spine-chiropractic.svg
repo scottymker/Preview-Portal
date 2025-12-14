@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round">
+  <!-- Vertebrae -->
+  <ellipse cx="50" cy="15" rx="15" ry="8"/>
+  <ellipse cx="50" cy="32" rx="18" ry="9"/>
+  <ellipse cx="50" cy="50" rx="20" ry="10"/>
+  <ellipse cx="50" cy="68" rx="18" ry="9"/>
+  <ellipse cx="50" cy="85" rx="15" ry="8"/>
+  <!-- Center line -->
+  <line x1="50" y1="8" x2="50" y2="92" stroke-width="1" stroke-dasharray="2,2"/>
+</svg>
