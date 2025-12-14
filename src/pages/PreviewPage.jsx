@@ -16,6 +16,7 @@ export default function PreviewPage() {
   const [selectedComment, setSelectedComment] = useState(null)
   const [newComment, setNewComment] = useState({ x: 0, y: 0, visible: false })
   const [showAssets, setShowAssets] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const iframeRef = useRef(null)
   const previewContainerRef = useRef(null)
 
@@ -153,6 +154,7 @@ export default function PreviewPage() {
             className={`btn ${commentMode ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => {
               setCommentMode(!commentMode)
+              setSidebarOpen(true)
               setNewComment({ x: 0, y: 0, visible: false })
             }}
           >
@@ -170,6 +172,17 @@ export default function PreviewPage() {
               Brand Assets
             </button>
           )}
+
+          {/* Toggle sidebar */}
+          <button
+            className={`btn ${sidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <MessageCircle size={16} />
+            {comments.filter(c => !c.resolved).length > 0 && (
+              <span className="comment-badge">{comments.filter(c => !c.resolved).length}</span>
+            )}
+          </button>
         </div>
       </header>
 
@@ -252,8 +265,11 @@ export default function PreviewPage() {
         </div>
 
         {/* Comments sidebar */}
-        <aside className="comments-sidebar">
+        <aside className={`comments-sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
+            <button className="btn btn-ghost btn-icon sidebar-close" onClick={() => setSidebarOpen(false)}>
+              <X size={18} />
+            </button>
             <h2>Comments</h2>
             <span className="comment-count">{comments.filter(c => !c.resolved).length}</span>
           </div>

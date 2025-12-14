@@ -192,14 +192,39 @@
 
 /* Comments Sidebar */
 .comments-sidebar {
-  width: 300px;
-  min-width: 300px;
+  position: fixed;
+  right: 0;
+  top: 60px;
+  bottom: 0;
+  width: 320px;
   background: var(--white);
   border-left: 1px solid var(--gray-200);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  flex-shrink: 0;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 200;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.comments-sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-close {
+  margin-right: auto;
+}
+
+/* Comment badge in header */
+.comment-badge {
+  background: var(--danger);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.125rem 0.4rem;
+  border-radius: 9999px;
+  margin-left: 0.25rem;
 }
 
 .sidebar-header {
