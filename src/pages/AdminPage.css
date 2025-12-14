@@ -49,6 +49,42 @@
   font-weight: 600;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.admin-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-500);
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.nav-tab:hover {
+  color: var(--dark);
+  background: var(--gray-100);
+}
+
+.nav-tab.active {
+  color: var(--primary);
+  background: rgba(37, 99, 235, 0.1);
+}
+
 /* Main */
 .admin-main {
   padding: 2rem 0;

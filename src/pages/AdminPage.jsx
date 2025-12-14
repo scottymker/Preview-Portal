@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllProjectsWithComments, createProject, updateProject, deleteProject, verifyAdminPassword, updateComment, deleteComment, supabase } from '../lib/supabase'
-import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
@@ -267,7 +267,16 @@ The Dev Side`
       {/* Header */}
       <header className="admin-header">
         <div className="container">
-          <h1>Preview Portal</h1>
+          <div className="header-left">
+            <h1>Preview Portal</h1>
+            <nav className="admin-nav">
+              <button className="nav-tab active">Projects</button>
+              <button className="nav-tab" onClick={() => navigate('/admin/billing')}>
+                <DollarSign size={16} />
+                Billing
+              </button>
+            </nav>
+          </div>
           <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
             <Plus size={16} />
             New Project
