@@ -130,6 +130,7 @@
 /* Desktop view - full width, no styling */
 .preview-container.desktop-view {
   max-width: 100%;
+  flex: 1;
   border: none;
   border-radius: 0;
   box-shadow: none;

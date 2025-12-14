@@ -155,3 +155,77 @@ export async function recordProjectView(projectId) {
 
   if (error) console.error('Failed to record view:', error)
 }
+
+// ============ BILLING FUNCTIONS ============
+
+// Get all invoices
+export async function getAllInvoices() {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Get invoice by ID
+export async function getInvoiceById(id) {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Create invoice
+export async function createInvoice(invoice) {
+  const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`
+  const { data, error } = await supabase
+    .from('invoices')
+    .insert([{ ...invoice, invoice_number: invoiceNumber }])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Update invoice
+export async function updateInvoice(id, updates) {
+  const { data, error } = await supabase
+    .from('invoices')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Delete invoice
+export async function deleteInvoice(id) {
+  const { error } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+// Mark invoice as paid
+export async function markInvoicePaid(id) {
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
