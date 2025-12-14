@@ -112,19 +112,22 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  height: calc(100vh - 60px);
 }
 
 /* Preview Container */
 .preview-container {
   flex: 1;
   position: relative;
-  margin: 1.5rem;
-  margin-right: 0;
+  margin: 1rem;
   background: var(--white);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   transition: max-width 0.3s ease;
+  /* Center the preview when viewport is constrained */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .preview-container.comment-mode {
@@ -137,7 +140,7 @@
 
 .preview-iframe {
   width: 100%;
-  height: calc(100vh - 140px);
+  height: 100%;
   border: none;
 }
 
@@ -193,12 +196,14 @@
 
 /* Comments Sidebar */
 .comments-sidebar {
-  width: 320px;
+  width: 300px;
+  min-width: 300px;
   background: var(--white);
   border-left: 1px solid var(--gray-200);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
