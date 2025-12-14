@@ -131,10 +131,8 @@ function getLightProfessionalTemplate(clientName: string, projectName: string, a
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 1px solid #eef1f5;">
-              <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #1a1a2e;">
-                The Dev Side
-              </h1>
-              <p style="margin: 8px 0 0; color: #6b7280; font-size: 14px;">Preview Portal</p>
+              <img src="https://thedevside.com/logo.png" alt="The Dev Side" style="height: 50px; width: auto;" />
+              <p style="margin: 12px 0 0; color: #6b7280; font-size: 14px;">Preview Portal</p>
             </td>
           </tr>
 
@@ -173,7 +171,7 @@ function getLightProfessionalTemplate(clientName: string, projectName: string, a
                 View Your Preview
               </a>
               <p style="margin: 20px 0 0; color: #9ca3af; font-size: 14px;">
-                Or visit <a href="${portalUrl}" style="color: #2563eb; text-decoration: none;">${portalUrl}</a> and enter your code
+                Or visit <a href="${portalUrl}" style="color: #2563eb; text-decoration: underline;">${portalUrl}</a> and enter your code
               </p>
             </td>
           </tr>
