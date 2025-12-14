@@ -72,6 +72,31 @@ export async function getCommentsByProject(projectId) {
   return data
 }
 
+// Get all projects with comment counts
+export async function getAllProjectsWithComments() {
+  const { data: projects, error: projectsError } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (projectsError) throw projectsError
+
+  // Get comments for all projects
+  const { data: comments, error: commentsError } = await supabase
+    .from('comments')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (commentsError) throw commentsError
+
+  // Attach comments to projects
+  return projects.map(project => ({
+    ...project,
+    comments: comments.filter(c => c.project_id === project.id),
+    unresolvedCount: comments.filter(c => c.project_id === project.id && !c.resolved).length
+  }))
+}
+
 export async function createComment(comment) {
   const { data, error } = await supabase
     .from('comments')

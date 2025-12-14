@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { getProjectByToken, getCommentsByProject, createComment, updateComment, deleteComment } from '../lib/supabase'
+import { getProjectByToken, getCommentsByProject, createComment, updateComment, deleteComment, supabase } from '../lib/supabase'
 import { MessageCircle, X, Send, Check, Trash2, Monitor, Tablet, Smartphone, Download, ChevronRight, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './PreviewPage.css'
@@ -52,20 +52,36 @@ export default function PreviewPage() {
   async function handleSubmitComment(e) {
     e.preventDefault()
     const formData = new FormData(e.target)
+    const authorName = formData.get('author') || 'Anonymous'
+    const message = formData.get('message')
 
     try {
       const comment = await createComment({
         project_id: project.id,
         x_position: newComment.x,
         y_position: newComment.y,
-        message: formData.get('message'),
-        author_name: formData.get('author') || 'Anonymous',
+        message: message,
+        author_name: authorName,
         resolved: false
       })
 
       setComments([...comments, comment])
       setNewComment({ x: 0, y: 0, visible: false })
       setCommentMode(false)
+
+      // Send notification to admin (fire and forget)
+      supabase.functions.invoke('notify-comment', {
+        body: {
+          projectName: project.name,
+          projectToken: token,
+          authorName: authorName,
+          message: message,
+          xPosition: newComment.x,
+          yPosition: newComment.y,
+          previewUrl: window.location.href,
+          adminUrl: `${window.location.origin}/admin`
+        }
+      }).catch(err => console.log('Notification skipped:', err))
     } catch (err) {
       console.error('Failed to create comment:', err)
     }
