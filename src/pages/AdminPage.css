@@ -442,6 +442,138 @@
   margin: 0;
 }
 
+/* Email Style Selector */
+.email-style-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.style-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--white);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.style-option:hover {
+  border-color: var(--gray-300);
+}
+
+.style-option.active {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.style-option span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.style-option.active span {
+  color: var(--primary);
+}
+
+.style-preview {
+  width: 100%;
+  height: 60px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+}
+
+.style-preview .preview-header {
+  width: 50%;
+  height: 6px;
+  border-radius: 2px;
+}
+
+.style-preview .preview-code {
+  width: 70%;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.style-preview .preview-btn {
+  width: 40%;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* Dark Tech Preview */
+.dark-preview {
+  background: linear-gradient(135deg, #0a0a0f, #0d1117);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.dark-preview .preview-header {
+  background: linear-gradient(135deg, #00d4ff, #00ff88);
+}
+
+.dark-preview .preview-code {
+  background: rgba(0, 212, 255, 0.2);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.dark-preview .preview-btn {
+  background: linear-gradient(135deg, #00d4ff, #00ff88);
+}
+
+/* Light Professional Preview */
+.light-preview {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.light-preview .preview-header {
+  background: #1a1a2e;
+}
+
+.light-preview .preview-code {
+  background: #f0f7ff;
+  border: 1px solid #2563eb;
+}
+
+.light-preview .preview-btn {
+  background: #2563eb;
+}
+
+/* Minimal Preview */
+.minimal-preview {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+}
+
+.minimal-preview .preview-header {
+  background: #999;
+  width: 40%;
+  height: 4px;
+}
+
+.minimal-preview .preview-code {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #000;
+  border-radius: 0;
+  width: 60%;
+}
+
+.minimal-preview .preview-btn {
+  background: #000;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .comment-item {

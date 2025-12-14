@@ -18,6 +18,7 @@ export default function AdminPage() {
   const [showEmailModal, setShowEmailModal] = useState(null)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSent, setEmailSent] = useState(null)
+  const [emailStyle, setEmailStyle] = useState('dark')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -211,7 +212,8 @@ The Dev Side`
           projectName: project.name,
           previewUrl: getPreviewUrl(project.token),
           accessCode: project.token,
-          portalUrl: window.location.origin
+          portalUrl: window.location.origin,
+          style: emailStyle
         }
       })
 
@@ -636,6 +638,47 @@ The Dev Side`
                       <p>No client email set. Add a client email to send directly, or copy the template below.</p>
                     </div>
                   )}
+
+                  <p className="text-gray-500 mt-4 mb-2">Choose email style:</p>
+                  <div className="email-style-selector">
+                    <button
+                      type="button"
+                      className={`style-option ${emailStyle === 'dark' ? 'active' : ''}`}
+                      onClick={() => setEmailStyle('dark')}
+                    >
+                      <div className="style-preview dark-preview">
+                        <div className="preview-header"></div>
+                        <div className="preview-code"></div>
+                        <div className="preview-btn"></div>
+                      </div>
+                      <span>Dark Tech</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`style-option ${emailStyle === 'light' ? 'active' : ''}`}
+                      onClick={() => setEmailStyle('light')}
+                    >
+                      <div className="style-preview light-preview">
+                        <div className="preview-header"></div>
+                        <div className="preview-code"></div>
+                        <div className="preview-btn"></div>
+                      </div>
+                      <span>Light Pro</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`style-option ${emailStyle === 'minimal' ? 'active' : ''}`}
+                      onClick={() => setEmailStyle('minimal')}
+                    >
+                      <div className="style-preview minimal-preview">
+                        <div className="preview-header"></div>
+                        <div className="preview-code"></div>
+                        <div className="preview-btn"></div>
+                      </div>
+                      <span>Minimal</span>
+                    </button>
+                  </div>
+
                   <p className="text-gray-500 mt-4 mb-2">Email preview:</p>
                   <div className="email-template">
                     <pre>{generateEmailTemplate(showEmailModal)}</pre>
