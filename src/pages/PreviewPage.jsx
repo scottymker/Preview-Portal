@@ -257,7 +257,9 @@ export default function PreviewPage() {
             title={`Preview of ${project.name}`}
             onLoad={handleIframeLoad}
             onError={handleIframeError}
-            allow="autoplay; encrypted-media; fullscreen; clipboard-write; clipboard-read; web-share; geolocation; camera; microphone; payment; accelerometer; gyroscope"
+            allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write *; clipboard-read *; web-share *; geolocation *; camera *; microphone *; payment *; accelerometer *; gyroscope *; magnetometer *; midi *; picture-in-picture *; sync-xhr *; usb *; vr *; xr-spatial-tracking *"
+            referrerPolicy="no-referrer-when-downgrade"
+            loading="eager"
           />
 
           {/* Iframe error fallback */}
