@@ -160,12 +160,17 @@ export async function recordProjectView(projectId) {
 
 // Get all invoices
 export async function getAllInvoices() {
+  console.log('Fetching invoices from Supabase...')
   const { data, error } = await supabase
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (error) throw error
+  console.log('Invoices response:', { data, error })
+  if (error) {
+    console.error('Supabase error:', error)
+    throw error
+  }
   return data
 }
 

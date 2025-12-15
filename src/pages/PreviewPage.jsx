@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProjectByToken, getCommentsByProject, createComment, updateComment, deleteComment, supabase, recordProjectView } from '../lib/supabase'
-import { MessageCircle, X, Send, Check, Trash2, Monitor, Tablet, Smartphone, Download, ChevronRight, Loader2 } from 'lucide-react'
+import { MessageCircle, X, Send, Check, Trash2, Monitor, Tablet, Smartphone, Download, ChevronRight, Loader2, ExternalLink } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './PreviewPage.css'
 
@@ -19,10 +19,34 @@ export default function PreviewPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const iframeRef = useRef(null)
   const previewContainerRef = useRef(null)
+  const [iframeError, setIframeError] = useState(false)
 
   useEffect(() => {
     loadProject()
   }, [token])
+
+  // Check if iframe loaded successfully
+  function handleIframeLoad() {
+    // Try to access iframe content - if blocked by X-Frame-Options, this will fail
+    try {
+      const iframe = iframeRef.current
+      if (iframe) {
+        // This will throw if cross-origin
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+        if (!iframeDoc || !iframeDoc.body || iframeDoc.body.innerHTML === '') {
+          console.log('Iframe loaded but may have empty content')
+        }
+      }
+    } catch (e) {
+      // Cross-origin - we can't check content, but that's normal
+      console.log('Iframe is cross-origin, cannot verify content')
+    }
+  }
+
+  function handleIframeError() {
+    setIframeError(true)
+    console.error('Iframe failed to load')
+  }
 
   async function loadProject() {
     try {
@@ -175,6 +199,17 @@ export default function PreviewPage() {
             {commentMode ? 'Done' : 'Add Comment'}
           </button>
 
+          {/* Open in new tab */}
+          <a
+            href={project.preview_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost"
+            title="Open in new tab"
+          >
+            <ExternalLink size={16} />
+          </a>
+
           {/* Assets button */}
           {project.assets_url && (
             <button
@@ -220,7 +255,17 @@ export default function PreviewPage() {
             src={project.preview_url}
             className="preview-iframe"
             title={`Preview of ${project.name}`}
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
+            allow="autoplay; encrypted-media; fullscreen; clipboard-write; clipboard-read; web-share; geolocation; camera; microphone; payment; accelerometer; gyroscope"
           />
+
+          {/* Iframe error fallback */}
+          {iframeError && (
+            <div className="iframe-error-overlay">
+              <p>Unable to load preview. <a href={project.preview_url} target="_blank" rel="noopener noreferrer">Open in new tab</a></p>
+            </div>
+          )}
 
           {/* Comment pins */}
           {comments.filter(c => !c.resolved).map(comment => (

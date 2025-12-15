@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllInvoices, createInvoice, updateInvoice, deleteInvoice, markInvoicePaid, verifyAdminPassword, getAllProjects } from '../lib/supabase'
-import { Plus, X, Check, Trash2, Edit2, Loader2, DollarSign, Clock, CheckCircle, AlertCircle, Send, FileText, ArrowLeft } from 'lucide-react'
+import { Plus, X, Check, Trash2, Edit2, Loader2, DollarSign, Clock, CheckCircle, AlertCircle, Send, FileText, ArrowLeft, Mail, ExternalLink, Copy } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import './BillingPage.css'
 
@@ -11,10 +11,14 @@ export default function BillingPage() {
   const [authError, setAuthError] = useState('')
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [filter, setFilter] = useState('all') // all, pending, paid, overdue
   const [projects, setProjects] = useState([])
+  const [emailingInvoice, setEmailingInvoice] = useState(null)
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailStatus, setEmailStatus] = useState(null) // 'success', 'error', or null
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -52,10 +56,14 @@ export default function BillingPage() {
   async function loadInvoices() {
     try {
       setLoading(true)
+      setError(null)
+      console.log('Loading invoices...')
       const data = await getAllInvoices()
+      console.log('Invoices loaded:', data)
       setInvoices(data || [])
     } catch (err) {
       console.error('Failed to load invoices:', err)
+      setError('Failed to load invoices: ' + err.message)
       setInvoices([])
     } finally {
       setLoading(false)
@@ -162,6 +170,61 @@ export default function BillingPage() {
     } catch (err) {
       console.error('Failed to mark invoice as paid:', err)
     }
+  }
+
+  async function handleSendEmail(invoice) {
+    if (!invoice.client_email) {
+      alert('No email address for this client')
+      return
+    }
+
+    setEmailSending(true)
+    setEmailStatus(null)
+
+    const paymentUrl = `${window.location.origin}/pay/${invoice.id}`
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invoice`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            to: invoice.client_email,
+            clientName: invoice.client_name,
+            invoiceNumber: invoice.invoice_number,
+            projectName: invoice.project_name,
+            lineItems: invoice.line_items || [],
+            total: invoice.total || 0,
+            dueDate: invoice.due_date,
+            notes: invoice.notes,
+            paymentUrl
+          })
+        }
+      )
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send email')
+      }
+
+      setEmailStatus('success')
+    } catch (err) {
+      console.error('Failed to send invoice email:', err)
+      setEmailStatus('error')
+    } finally {
+      setEmailSending(false)
+    }
+  }
+
+  function copyPaymentLink(invoiceId) {
+    const url = `${window.location.origin}/pay/${invoiceId}`
+    navigator.clipboard.writeText(url)
+    alert('Payment link copied to clipboard!')
   }
 
   function getStatusColor(invoice) {
@@ -319,6 +382,14 @@ export default function BillingPage() {
       {/* Main content */}
       <main className="billing-main">
         <div className="container">
+          {error && (
+            <div className="card" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', marginBottom: '1rem' }}>
+              <div className="card-body" style={{ color: 'var(--danger)' }}>
+                <AlertCircle size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                {error}
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="loading-state">
               <Loader2 className="spinner" size={32} />
@@ -386,13 +457,32 @@ export default function BillingPage() {
 
                     <div className="invoice-actions">
                       {invoice.status !== 'paid' && (
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => handleMarkPaid(invoice.id)}
-                        >
-                          <Check size={14} />
-                          Mark Paid
-                        </button>
+                        <>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => setEmailingInvoice(invoice)}
+                            disabled={!invoice.client_email}
+                            title={invoice.client_email ? 'Send invoice email' : 'No email address'}
+                          >
+                            <Mail size={14} />
+                            Email
+                          </button>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => copyPaymentLink(invoice.id)}
+                            title="Copy payment link"
+                          >
+                            <Copy size={14} />
+                            Copy Link
+                          </button>
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => handleMarkPaid(invoice.id)}
+                          >
+                            <Check size={14} />
+                            Mark Paid
+                          </button>
+                        </>
                       )}
                       <button
                         className="btn btn-ghost btn-sm"
@@ -427,6 +517,84 @@ export default function BillingPage() {
           }}
           onSubmit={editingInvoice ? handleUpdateInvoice : handleCreateInvoice}
         />
+      )}
+
+      {/* Email Invoice Modal */}
+      {emailingInvoice && (
+        <div className="modal-overlay" onClick={() => { setEmailingInvoice(null); setEmailStatus(null); }}>
+          <div className="modal animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Send Invoice</h2>
+              <button className="btn btn-ghost btn-icon" onClick={() => { setEmailingInvoice(null); setEmailStatus(null); }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {emailStatus === 'success' ? (
+                <div className="email-success">
+                  <CheckCircle size={48} />
+                  <h3>Invoice Sent!</h3>
+                  <p>Email sent to {emailingInvoice.client_email}</p>
+                </div>
+              ) : emailStatus === 'error' ? (
+                <div className="email-error">
+                  <AlertCircle size={48} />
+                  <h3>Failed to Send</h3>
+                  <p>Please try again or check your email configuration.</p>
+                </div>
+              ) : (
+                <>
+                  <p style={{ marginBottom: '1rem' }}>
+                    Send invoice <strong>{emailingInvoice.invoice_number}</strong> to:
+                  </p>
+                  <div className="email-recipient">
+                    <Mail size={16} />
+                    <span className="email">{emailingInvoice.client_email}</span>
+                  </div>
+                  <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: 'var(--radius)' }}>
+                    <p style={{ margin: '0 0 0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Invoice Summary:</p>
+                    <p style={{ margin: '0', fontSize: '0.875rem', color: 'var(--gray-600)' }}>
+                      {emailingInvoice.project_name} - ${(emailingInvoice.total || 0).toFixed(2)}
+                    </p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                      Due: {format(new Date(emailingInvoice.due_date), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              {emailStatus ? (
+                <button className="btn btn-primary" onClick={() => { setEmailingInvoice(null); setEmailStatus(null); }}>
+                  Done
+                </button>
+              ) : (
+                <>
+                  <button className="btn btn-secondary" onClick={() => setEmailingInvoice(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleSendEmail(emailingInvoice)}
+                    disabled={emailSending}
+                  >
+                    {emailSending ? (
+                      <>
+                        <Loader2 size={16} className="spinner" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send Invoice
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

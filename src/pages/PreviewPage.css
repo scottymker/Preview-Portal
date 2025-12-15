@@ -168,6 +168,23 @@
   border: none;
 }
 
+.iframe-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--gray-600);
+  text-align: center;
+  padding: 2rem;
+}
+
+.iframe-error-overlay a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 /* Comment Pins */
 .comment-pin {
   position: absolute;
