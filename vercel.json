@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/sites/:path*", "destination": "/sites/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -12,7 +13,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://preview.thedevside.com https://*.thedevside.com https://*.vercel.app http://localhost:*"
+          "value": "frame-ancestors *"
         }
       ]
     }
