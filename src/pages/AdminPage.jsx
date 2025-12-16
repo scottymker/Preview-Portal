@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllProjectsWithComments, createProject, updateProject, deleteProject, verifyAdminPassword, updateComment, deleteComment, supabase } from '../lib/supabase'
-import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign, Upload, FolderArchive } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
@@ -36,6 +36,11 @@ export default function AdminPage() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSent, setEmailSent] = useState(null)
   const [emailStyle, setEmailStyle] = useState('dark')
+  const [zipFile, setZipFile] = useState(null)
+  const [uploadingZip, setUploadingZip] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [uploadSuccess, setUploadSuccess] = useState(null)
+  const fileInputRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -76,9 +81,23 @@ export default function AdminPage() {
   async function handleCreateProject(e) {
     e.preventDefault()
     const formData = new FormData(e.target)
-    const previewUrl = convertToPreviewUrl(formData.get('preview_url'))
+    let previewUrl = formData.get('preview_url')
 
     try {
+      // If ZIP file is provided, upload it first
+      if (zipFile) {
+        const siteName = previewUrl || formData.get('name')
+        const uploadedUrl = await handleZipUpload(siteName)
+        if (uploadedUrl) {
+          previewUrl = uploadedUrl
+        } else if (uploadError) {
+          // Upload failed, don't create project
+          return
+        }
+      } else {
+        previewUrl = convertToPreviewUrl(previewUrl)
+      }
+
       const project = await createProject({
         name: formData.get('name'),
         preview_url: previewUrl,
@@ -89,6 +108,7 @@ export default function AdminPage() {
 
       setProjects([{ ...project, comments: [], unresolvedCount: 0 }, ...projects])
       setShowCreateModal(false)
+      clearZipFile()
     } catch (err) {
       console.error('Failed to create project:', err)
     }
@@ -248,6 +268,66 @@ The Dev Side`
       setEmailSent('error')
     } finally {
       setSendingEmail(false)
+    }
+  }
+
+  async function handleZipUpload(siteName) {
+    if (!zipFile || !siteName) return null
+
+    setUploadingZip(true)
+    setUploadError(null)
+    setUploadSuccess(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', zipFile)
+      formData.append('siteName', siteName.trim().toLowerCase().replace(/\s+/g, '-'))
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-site`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: formData
+        }
+      )
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Upload failed')
+      }
+
+      setUploadSuccess(result)
+      return result.previewUrl
+    } catch (err) {
+      console.error('ZIP upload error:', err)
+      setUploadError(err.message)
+      return null
+    } finally {
+      setUploadingZip(false)
+    }
+  }
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0]
+    if (file && file.name.endsWith('.zip')) {
+      setZipFile(file)
+      setUploadError(null)
+    } else if (file) {
+      setUploadError('Please select a ZIP file')
+      setZipFile(null)
+    }
+  }
+
+  function clearZipFile() {
+    setZipFile(null)
+    setUploadError(null)
+    setUploadSuccess(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -515,16 +595,65 @@ The Dev Side`
                   />
                 </div>
                 <div className="form-group">
-                  <label className="label">Site Name or URL *</label>
+                  <label className="label">Site Name or URL {!zipFile && '*'}</label>
                   <input
                     type="text"
                     name="preview_url"
                     className="input"
                     placeholder="brain-health or https://custom-url.com"
-                    required
+                    required={!zipFile}
                   />
                   <span className="input-hint">Enter folder name (e.g., "brain-health") or full URL</span>
                 </div>
+
+                {/* ZIP Upload Section */}
+                <div className="form-group">
+                  <label className="label">Or Upload Site Files</label>
+                  <div className="zip-upload-area">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept=".zip"
+                      onChange={handleFileSelect}
+                      className="file-input-hidden"
+                      id="zip-upload"
+                    />
+                    {!zipFile ? (
+                      <label htmlFor="zip-upload" className="zip-upload-label">
+                        <FolderArchive size={24} />
+                        <span>Click to upload ZIP file</span>
+                        <span className="upload-hint">Contains your site files (HTML, CSS, JS, images)</span>
+                      </label>
+                    ) : (
+                      <div className="zip-file-selected">
+                        <div className="zip-file-info">
+                          <FolderArchive size={20} />
+                          <span className="zip-file-name">{zipFile.name}</span>
+                          <span className="zip-file-size">({(zipFile.size / 1024).toFixed(1)} KB)</span>
+                        </div>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={clearZipFile}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {uploadError && (
+                    <span className="input-error">{uploadError}</span>
+                  )}
+                  {uploadingZip && (
+                    <div className="upload-progress">
+                      <Loader2 size={16} className="spinner" />
+                      <span>Uploading and deploying site...</span>
+                    </div>
+                  )}
+                  {uploadSuccess && (
+                    <div className="upload-success-msg">
+                      <Check size={16} />
+                      <span>Deployed {uploadSuccess.filesUploaded} files to {uploadSuccess.siteName}</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="form-group">
                   <label className="label">Brand Assets URL</label>
                   <input
@@ -554,11 +683,17 @@ The Dev Side`
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowCreateModal(false); clearZipFile(); }} disabled={uploadingZip}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Create Project
+                <button type="submit" className="btn btn-primary" disabled={uploadingZip}>
+                  {uploadingZip ? (
+                    <><Loader2 size={16} className="spinner" /> Deploying...</>
+                  ) : zipFile ? (
+                    <><Upload size={16} /> Upload & Create</>
+                  ) : (
+                    'Create Project'
+                  )}
                 </button>
               </div>
             </form>
