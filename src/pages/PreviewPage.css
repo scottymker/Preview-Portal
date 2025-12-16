@@ -121,7 +121,7 @@
 .preview-container {
   position: relative;
   background: var(--white);
-  overflow: hidden;
+  overflow: auto;
   transition: max-width 0.3s ease, width 0.3s ease;
   height: 100%;
   width: 100%;
