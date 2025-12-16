@@ -5,6 +5,28 @@ import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, Messa
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
+// Convert GitHub repo URL to GitHub Pages URL
+function convertGitHubToPages(url) {
+  if (!url) return url
+
+  // Match GitHub repo URLs like:
+  // https://github.com/user/repo
+  // https://github.com/user/repo/
+  // http://github.com/user/repo
+  // github.com/user/repo
+  const githubRepoRegex = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)\/?$/i
+  const match = url.trim().match(githubRepoRegex)
+
+  if (match) {
+    const [, username, repo] = match
+    // Remove .git suffix if present
+    const repoName = repo.replace(/\.git$/, '')
+    return `https://${username}.github.io/${repoName}`
+  }
+
+  return url
+}
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
@@ -59,11 +81,12 @@ export default function AdminPage() {
   async function handleCreateProject(e) {
     e.preventDefault()
     const formData = new FormData(e.target)
+    const previewUrl = convertGitHubToPages(formData.get('preview_url'))
 
     try {
       const project = await createProject({
         name: formData.get('name'),
-        preview_url: formData.get('preview_url'),
+        preview_url: previewUrl,
         assets_url: formData.get('assets_url') || null,
         client_name: formData.get('client_name') || null,
         client_email: formData.get('client_email') || null
@@ -79,11 +102,12 @@ export default function AdminPage() {
   async function handleUpdateProject(e) {
     e.preventDefault()
     const formData = new FormData(e.target)
+    const previewUrl = convertGitHubToPages(formData.get('preview_url'))
 
     try {
       const updated = await updateProject(editingProject.id, {
         name: formData.get('name'),
-        preview_url: formData.get('preview_url'),
+        preview_url: previewUrl,
         assets_url: formData.get('assets_url') || null,
         client_name: formData.get('client_name') || null,
         client_email: formData.get('client_email') || null
@@ -498,12 +522,13 @@ The Dev Side`
                 <div className="form-group">
                   <label className="label">Preview URL *</label>
                   <input
-                    type="url"
+                    type="text"
                     name="preview_url"
                     className="input"
-                    placeholder="https://example.com or file:// path"
+                    placeholder="https://example.com or github.com/user/repo"
                     required
                   />
+                  <span className="input-hint">GitHub repos auto-convert to GitHub Pages</span>
                 </div>
                 <div className="form-group">
                   <label className="label">Brand Assets URL</label>
@@ -571,12 +596,14 @@ The Dev Side`
                 <div className="form-group">
                   <label className="label">Preview URL *</label>
                   <input
-                    type="url"
+                    type="text"
                     name="preview_url"
                     className="input"
                     defaultValue={editingProject.preview_url}
+                    placeholder="https://example.com or github.com/user/repo"
                     required
                   />
+                  <span className="input-hint">GitHub repos auto-convert to GitHub Pages</span>
                 </div>
                 <div className="form-group">
                   <label className="label">Brand Assets URL</label>

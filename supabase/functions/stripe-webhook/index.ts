@@ -279,14 +279,14 @@ Questions? Reply to this email or contact us.
 Best regards,
 The Dev Side`
 
-            await fetch('https://api.resend.com/emails', {
+            const emailResponse = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${RESEND_API_KEY}`,
               },
               body: JSON.stringify({
-                from: 'The Dev Side <onboarding@resend.dev>',
+                from: 'The Dev Side <hello@thedevside.com>',
                 to: [invoice.client_email],
                 subject: `Payment Received - ${invoice.invoice_number}`,
                 html: htmlContent,
@@ -294,7 +294,13 @@ The Dev Side`
               }),
             })
 
-            console.log('Confirmation email sent to:', invoice.client_email)
+            const emailResult = await emailResponse.json()
+
+            if (!emailResponse.ok) {
+              console.error('Resend API error:', emailResult)
+            } else {
+              console.log('Confirmation email sent to:', invoice.client_email, 'ID:', emailResult.id)
+            }
           } catch (emailError) {
             console.error('Error sending confirmation email:', emailError)
             // Don't throw - payment was successful, email is secondary
