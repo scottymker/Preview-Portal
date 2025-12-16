@@ -1,18 +1,29 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import { getInvoiceById, updateInvoice } from '../lib/supabase'
-import { Check, CreditCard, Loader2, AlertCircle, CheckCircle, Calendar, FileText } from 'lucide-react'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { getInvoiceById } from '../lib/supabase'
+import { CreditCard, Loader2, AlertCircle, CheckCircle, FileText, Lock } from 'lucide-react'
 import { format } from 'date-fns'
+import StripeProvider from '../components/StripeProvider'
+import PaymentForm from '../components/PaymentForm'
 import './PaymentPage.css'
 
 export default function PaymentPage() {
   const { invoiceId } = useParams()
+  const [searchParams] = useSearchParams()
   const [invoice, setInvoice] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('card')
-  const [processing, setProcessing] = useState(false)
   const [paymentComplete, setPaymentComplete] = useState(false)
+  const [clientSecret, setClientSecret] = useState(null)
+  const [creatingIntent, setCreatingIntent] = useState(false)
+
+  // Check if redirected back from Stripe with success
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      setPaymentComplete(true)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     loadInvoice()
@@ -33,27 +44,64 @@ export default function PaymentPage() {
     }
   }
 
-  async function handlePayment(e) {
-    e.preventDefault()
-    setProcessing(true)
+  async function createPaymentIntent() {
+    if (clientSecret || creatingIntent) return
 
-    // Simulate payment processing
-    // In production, integrate with Stripe here
-    setTimeout(async () => {
-      try {
-        await updateInvoice(invoiceId, {
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          payment_method: paymentMethod
-        })
-        setPaymentComplete(true)
-        setInvoice(prev => ({ ...prev, status: 'paid', paid_at: new Date().toISOString() }))
-      } catch (err) {
-        setError('Payment failed. Please try again.')
-      } finally {
-        setProcessing(false)
+    setCreatingIntent(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            invoiceId: invoice.id,
+            customerEmail: invoice.client_email,
+            customerName: invoice.client_name
+          })
+        }
+      )
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create payment intent')
       }
-    }, 2000)
+
+      setClientSecret(result.clientSecret)
+    } catch (err) {
+      console.error('Error creating payment intent:', err)
+      setError(err.message || 'Failed to initialize payment. Please try again.')
+    } finally {
+      setCreatingIntent(false)
+    }
+  }
+
+  // Create payment intent when card payment is selected
+  useEffect(() => {
+    if (invoice && paymentMethod === 'card' && !paymentComplete && invoice.status !== 'paid') {
+      createPaymentIntent()
+    }
+  }, [invoice, paymentMethod, paymentComplete])
+
+  function handlePaymentSuccess(paymentIntent) {
+    console.log('Payment successful:', paymentIntent)
+    setPaymentComplete(true)
+    setInvoice(prev => ({
+      ...prev,
+      status: 'paid',
+      paid_at: new Date().toISOString()
+    }))
+  }
+
+  function handlePaymentError(error) {
+    console.error('Payment error:', error)
+    // Error is handled in PaymentForm component
   }
 
   if (loading) {
@@ -65,7 +113,7 @@ export default function PaymentPage() {
     )
   }
 
-  if (error) {
+  if (error && !invoice) {
     return (
       <div className="payment-error">
         <AlertCircle size={48} />
@@ -77,27 +125,68 @@ export default function PaymentPage() {
 
   if (paymentComplete) {
     return (
-      <div className="payment-page">
-        <div className="payment-container">
-          <div className="payment-success">
-            <div className="success-icon">
-              <CheckCircle size={64} />
+      <div className="payment-page payment-page-success">
+        <div className="success-container">
+          {/* Animated Background */}
+          <div className="success-bg-shapes">
+            <div className="shape shape-1"></div>
+            <div className="shape shape-2"></div>
+            <div className="shape shape-3"></div>
+          </div>
+
+          {/* Success Card */}
+          <div className="success-card">
+            <div className="success-icon-wrapper">
+              <div className="success-icon-ring"></div>
+              <div className="success-icon">
+                <CheckCircle size={48} strokeWidth={2.5} />
+              </div>
             </div>
-            <h1>Payment Complete!</h1>
-            <p>Thank you for your payment.</p>
-            <div className="receipt-summary">
-              <div className="receipt-row">
-                <span>Invoice</span>
-                <span>{invoice.invoice_number}</span>
+
+            <h1 className="success-title">Payment Successful</h1>
+            <p className="success-subtitle">Thank you for your payment, {invoice.client_name}!</p>
+
+            {/* Amount Display */}
+            <div className="success-amount-card">
+              <span className="amount-label">Amount Paid</span>
+              <span className="amount-value">${(invoice.total || 0).toFixed(2)}</span>
+            </div>
+
+            {/* Details */}
+            <div className="success-details">
+              <div className="detail-item">
+                <span className="detail-label">Invoice</span>
+                <span className="detail-value">{invoice.invoice_number}</span>
               </div>
-              <div className="receipt-row">
-                <span>Amount Paid</span>
-                <span className="amount">${(invoice.total || 0).toFixed(2)}</span>
+              <div className="detail-item">
+                <span className="detail-label">Project</span>
+                <span className="detail-value">{invoice.project_name}</span>
               </div>
-              <div className="receipt-row">
-                <span>Date</span>
-                <span>{format(new Date(invoice.paid_at || new Date()), 'MMM d, yyyy')}</span>
+              <div className="detail-item">
+                <span className="detail-label">Date</span>
+                <span className="detail-value">{format(new Date(invoice.paid_at || new Date()), 'MMMM d, yyyy')}</span>
               </div>
+              <div className="detail-item">
+                <span className="detail-label">Payment Method</span>
+                <span className="detail-value detail-badge">
+                  <CreditCard size={14} />
+                  Card
+                </span>
+              </div>
+            </div>
+
+            {/* Email Confirmation */}
+            <div className="success-email-notice">
+              <div className="email-icon">
+                <FileText size={18} />
+              </div>
+              <p>A confirmation email has been sent to <strong>{invoice.client_email}</strong></p>
+            </div>
+
+            {/* Footer */}
+            <div className="success-footer">
+              <Lock size={14} />
+              <span>Secured by Stripe</span>
             </div>
           </div>
         </div>
@@ -208,66 +297,31 @@ export default function PaymentPage() {
           </div>
 
           {paymentMethod === 'card' && (
-            <form onSubmit={handlePayment} className="card-form">
-              <div className="form-group">
-                <label className="label">Card Number</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="4242 4242 4242 4242"
-                  maxLength="19"
-                  required
-                />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="label">Expiry Date</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="MM/YY"
-                    maxLength="5"
-                    required
-                  />
+            <div className="stripe-payment-section">
+              {error && (
+                <div className="payment-error-banner">
+                  <AlertCircle size={16} />
+                  <span>{error}</span>
                 </div>
-                <div className="form-group">
-                  <label className="label">CVC</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="123"
-                    maxLength="4"
-                    required
-                  />
+              )}
+
+              {creatingIntent && (
+                <div className="payment-loading-inline">
+                  <Loader2 className="spinner" size={20} />
+                  <span>Initializing secure payment...</span>
                 </div>
-              </div>
-              <div className="form-group">
-                <label className="label">Name on Card</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="John Smith"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn btn-primary btn-lg w-full"
-                disabled={processing}
-              >
-                {processing ? (
-                  <>
-                    <Loader2 size={20} className="spinner" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={20} />
-                    Pay ${(invoice.total || 0).toFixed(2)}
-                  </>
-                )}
-              </button>
-            </form>
+              )}
+
+              {clientSecret && (
+                <StripeProvider clientSecret={clientSecret}>
+                  <PaymentForm
+                    invoice={invoice}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                  />
+                </StripeProvider>
+              )}
+            </div>
           )}
 
           {paymentMethod === 'bank' && (
@@ -305,7 +359,10 @@ export default function PaymentPage() {
 
         {/* Footer */}
         <div className="payment-footer">
-          <p>Secure payment powered by The Dev Side</p>
+          <p>
+            <Lock size={14} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+            Secure payment powered by Stripe
+          </p>
         </div>
       </div>
     </div>
