@@ -307,11 +307,13 @@ img {
 .hero {
     position: relative;
     min-height: 100vh;
+    min-height: 700px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     background: url('background.png') center/cover no-repeat;
+    background-color: #1a365d;
     margin-top: 0;
     padding-top: 160px;
     padding-bottom: 4rem;
