@@ -87,26 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================================
     // Animate Elements on Scroll
     // ========================================
-    const observerOptions = {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.1
-    };
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('animate-in');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-
-    // Observe elements for animation
-    document.querySelectorAll('.problem-card, .condition-card, .diff-card, .timeline-item, .testimonial-card').forEach(el => {
-        el.classList.add('animate-element');
-        observer.observe(el);
-    });
+    // Detect if we're inside an iframe
+    const isInIframe = window.self !== window.top;
 
     // Add CSS for animations
     const style = document.createElement('style');
@@ -126,6 +109,38 @@ document.addEventListener('DOMContentLoaded', function() {
         .timeline-item:nth-child(4) { transition-delay: 0.4s; }
     `;
     document.head.appendChild(style);
+
+    // Get all animatable elements
+    const animatableElements = document.querySelectorAll('.problem-card, .condition-card, .diff-card, .timeline-item, .testimonial-card');
+
+    if (isInIframe) {
+        // In iframe: skip animations, show all elements immediately
+        animatableElements.forEach(el => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+    } else {
+        // Not in iframe: use IntersectionObserver for scroll animations
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        animatableElements.forEach(el => {
+            el.classList.add('animate-element');
+            observer.observe(el);
+        });
+    }
 
     // ========================================
     // Form Submission Handler
