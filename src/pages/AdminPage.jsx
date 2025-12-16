@@ -5,26 +5,21 @@ import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, Messa
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
-// Convert GitHub repo URL to GitHub Pages URL
-function convertGitHubToPages(url) {
-  if (!url) return url
+// Convert site name or URL to full preview URL
+function convertToPreviewUrl(input) {
+  if (!input) return input
 
-  // Match GitHub repo URLs like:
-  // https://github.com/user/repo
-  // https://github.com/user/repo/
-  // http://github.com/user/repo
-  // github.com/user/repo
-  const githubRepoRegex = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)\/?$/i
-  const match = url.trim().match(githubRepoRegex)
+  const trimmed = input.trim()
 
-  if (match) {
-    const [, username, repo] = match
-    // Remove .git suffix if present
-    const repoName = repo.replace(/\.git$/, '')
-    return `https://${username}.github.io/${repoName}`
+  // If it's already a full URL, return as-is
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed
   }
 
-  return url
+  // Otherwise, treat it as a site folder name and build the preview URL
+  // Remove any leading/trailing slashes and spaces
+  const siteName = trimmed.replace(/^\/+|\/+$/g, '').toLowerCase().replace(/\s+/g, '-')
+  return `https://preview.thedevside.com/sites/${siteName}/`
 }
 
 export default function AdminPage() {
@@ -81,7 +76,7 @@ export default function AdminPage() {
   async function handleCreateProject(e) {
     e.preventDefault()
     const formData = new FormData(e.target)
-    const previewUrl = convertGitHubToPages(formData.get('preview_url'))
+    const previewUrl = convertToPreviewUrl(formData.get('preview_url'))
 
     try {
       const project = await createProject({
@@ -102,7 +97,7 @@ export default function AdminPage() {
   async function handleUpdateProject(e) {
     e.preventDefault()
     const formData = new FormData(e.target)
-    const previewUrl = convertGitHubToPages(formData.get('preview_url'))
+    const previewUrl = convertToPreviewUrl(formData.get('preview_url'))
 
     try {
       const updated = await updateProject(editingProject.id, {
@@ -520,15 +515,15 @@ The Dev Side`
                   />
                 </div>
                 <div className="form-group">
-                  <label className="label">Preview URL *</label>
+                  <label className="label">Site Name or URL *</label>
                   <input
                     type="text"
                     name="preview_url"
                     className="input"
-                    placeholder="https://example.com or github.com/user/repo"
+                    placeholder="brain-health or https://custom-url.com"
                     required
                   />
-                  <span className="input-hint">GitHub repos auto-convert to GitHub Pages</span>
+                  <span className="input-hint">Enter folder name (e.g., "brain-health") or full URL</span>
                 </div>
                 <div className="form-group">
                   <label className="label">Brand Assets URL</label>
@@ -594,16 +589,16 @@ The Dev Side`
                   />
                 </div>
                 <div className="form-group">
-                  <label className="label">Preview URL *</label>
+                  <label className="label">Site Name or URL *</label>
                   <input
                     type="text"
                     name="preview_url"
                     className="input"
                     defaultValue={editingProject.preview_url}
-                    placeholder="https://example.com or github.com/user/repo"
+                    placeholder="brain-health or https://custom-url.com"
                     required
                   />
-                  <span className="input-hint">GitHub repos auto-convert to GitHub Pages</span>
+                  <span className="input-hint">Enter folder name (e.g., "brain-health") or full URL</span>
                 </div>
                 <div className="form-group">
                   <label className="label">Brand Assets URL</label>
