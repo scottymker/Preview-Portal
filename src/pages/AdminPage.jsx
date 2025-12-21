@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getAllProjectsWithComments, createProject, updateProject, deleteProject, verifyAdminPassword, updateComment, deleteComment, supabase } from '../lib/supabase'
-import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign, Upload, FolderArchive } from 'lucide-react'
+import { getAllProjectsWithComments, createProject, updateProject, deleteProject, verifyAdminPassword, updateComment, deleteComment, supabase, getAllEmailTemplates, getEmailTemplatesByCategory, getSentEmailsByProject } from '../lib/supabase'
+import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign, Upload, FolderArchive, FileText, MousePointerClick } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
@@ -40,6 +40,9 @@ export default function AdminPage() {
   const [uploadingZip, setUploadingZip] = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [uploadSuccess, setUploadSuccess] = useState(null)
+    const [emailTemplates, setEmailTemplates] = useState([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [projectEmailStats, setProjectEmailStats] = useState({})
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
 
@@ -49,6 +52,7 @@ export default function AdminPage() {
     if (isAuth === 'true') {
       setAuthenticated(true)
       loadProjects()
+      loadEmailTemplates()
     } else {
       setLoading(false)
     }
@@ -71,10 +75,41 @@ export default function AdminPage() {
       setLoading(true)
       const data = await getAllProjectsWithComments()
       setProjects(data)
+      // Load email stats for each project
+      const statsPromises = data.map(async (project) => {
+        try {
+          const emails = await getSentEmailsByProject(project.id)
+          return {
+            projectId: project.id,
+            stats: {
+              sent: emails?.length || 0,
+              opened: emails?.filter(e => e.opened_at).length || 0,
+              clicked: emails?.reduce((sum, e) => sum + (e.email_clicks?.length || 0), 0) || 0
+            }
+          }
+        } catch {
+          return { projectId: project.id, stats: { sent: 0, opened: 0, clicked: 0 } }
+        }
+      })
+      const allStats = await Promise.all(statsPromises)
+      const statsMap = {}
+      allStats.forEach(({ projectId, stats }) => {
+        statsMap[projectId] = stats
+      })
+      setProjectEmailStats(statsMap)
     } catch (err) {
       console.error('Failed to load projects:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadEmailTemplates() {
+    try {
+      const templates = await getEmailTemplatesByCategory('preview')
+      setEmailTemplates(templates || [])
+    } catch (err) {
+      console.error('Failed to load email templates:', err)
     }
   }
 
@@ -244,24 +279,47 @@ The Dev Side`
     setEmailSent(null)
 
     try {
-      const { data, error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: project.client_email,
-          clientName: project.client_name || '',
-          projectName: project.name,
-          previewUrl: getPreviewUrl(project.token),
-          accessCode: project.token,
-          portalUrl: window.location.origin,
-          style: emailStyle
+      // Build the request body
+      const requestBody = {
+        to: project.client_email,
+        clientName: project.client_name || '',
+        projectName: project.name,
+        previewUrl: getPreviewUrl(project.token),
+        accessCode: project.token,
+        portalUrl: window.location.origin,
+        projectId: project.id,
+        style: emailStyle
+      }
+
+      // If using a custom template, include template data
+      if (selectedTemplateId) {
+        const template = emailTemplates.find(t => t.id === selectedTemplateId)
+        if (template) {
+          requestBody.templateId = template.id
+          requestBody.templateSubject = template.subject
+          requestBody.templateBody = template.body
         }
+      }
+
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: requestBody
       })
 
       if (error) throw error
 
       setEmailSent('success')
+      // Update local email stats
+      setProjectEmailStats(prev => ({
+        ...prev,
+        [project.id]: {
+          ...prev[project.id],
+          sent: (prev[project.id]?.sent || 0) + 1
+        }
+      }))
       setTimeout(() => {
         setShowEmailModal(null)
         setEmailSent(null)
+        setSelectedTemplateId('')
       }, 2000)
     } catch (err) {
       console.error('Failed to send email:', err)
@@ -376,10 +434,16 @@ The Dev Side`
               </button>
             </nav>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} />
-            New Project
-          </button>
+          <div className="header-actions">
+            <button className="btn btn-secondary" onClick={() => navigate('/admin/email')}>
+              <Mail size={16} />
+              Email
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} />
+              New Project
+            </button>
+          </div>
         </div>
       </header>
 
@@ -466,6 +530,24 @@ The Dev Side`
                         }
                       </span>
                     </div>
+
+                    {/* Email Tracking Stats */}
+                    {projectEmailStats[project.id]?.sent > 0 && (
+                      <div className="email-tracking-stats">
+                        <span className="tracking-stat">
+                          <Mail size={14} />
+                          {projectEmailStats[project.id].sent} sent
+                        </span>
+                        <span className={`tracking-stat ${projectEmailStats[project.id].opened > 0 ? 'opened' : ''}`}>
+                          <Eye size={14} />
+                          {projectEmailStats[project.id].opened} opened
+                        </span>
+                        <span className={`tracking-stat ${projectEmailStats[project.id].clicked > 0 ? 'clicked' : ''}`}>
+                          <MousePointerClick size={14} />
+                          {projectEmailStats[project.id].clicked} clicks
+                        </span>
+                      </div>
+                    )}
 
                     <div className="project-link-box">
                       <div className="link-display">
@@ -812,50 +894,87 @@ The Dev Side`
                     </div>
                   )}
 
-                  <p className="text-gray-500 mt-4 mb-2">Choose email style:</p>
-                  <div className="email-style-selector">
-                    <button
-                      type="button"
-                      className={`style-option ${emailStyle === 'dark' ? 'active' : ''}`}
-                      onClick={() => setEmailStyle('dark')}
-                    >
-                      <div className="style-preview dark-preview">
-                        <div className="preview-header"></div>
-                        <div className="preview-code"></div>
-                        <div className="preview-btn"></div>
-                      </div>
-                      <span>Dark Tech</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`style-option ${emailStyle === 'light' ? 'active' : ''}`}
-                      onClick={() => setEmailStyle('light')}
-                    >
-                      <div className="style-preview light-preview">
-                        <div className="preview-header"></div>
-                        <div className="preview-code"></div>
-                        <div className="preview-btn"></div>
-                      </div>
-                      <span>Light Pro</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`style-option ${emailStyle === 'minimal' ? 'active' : ''}`}
-                      onClick={() => setEmailStyle('minimal')}
-                    >
-                      <div className="style-preview minimal-preview">
-                        <div className="preview-header"></div>
-                        <div className="preview-code"></div>
-                        <div className="preview-btn"></div>
-                      </div>
-                      <span>Minimal</span>
-                    </button>
-                  </div>
+                  {emailTemplates.length > 0 && (
+                    <div className="form-group mt-4">
+                      <label className="label">Email Template</label>
+                      <select
+                        className="input"
+                        value={selectedTemplateId}
+                        onChange={e => setSelectedTemplateId(e.target.value)}
+                      >
+                        <option value="">Use built-in style below</option>
+                        {emailTemplates.map(template => (
+                          <option key={template.id} value={template.id}>
+                            {template.name} {template.is_default ? '(Default)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                  <p className="text-gray-500 mt-4 mb-2">Email preview:</p>
-                  <div className="email-template">
-                    <pre>{generateEmailTemplate(showEmailModal)}</pre>
-                  </div>
+                  {!selectedTemplateId && (
+                    <>
+                      <p className="text-gray-500 mt-4 mb-2">Choose email style:</p>
+                      <div className="email-style-selector">
+                        <button
+                          type="button"
+                          className={`style-option ${emailStyle === 'dark' ? 'active' : ''}`}
+                          onClick={() => setEmailStyle('dark')}
+                        >
+                          <div className="style-preview dark-preview">
+                            <div className="preview-header"></div>
+                            <div className="preview-code"></div>
+                            <div className="preview-btn"></div>
+                          </div>
+                          <span>Dark Tech</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`style-option ${emailStyle === 'light' ? 'active' : ''}`}
+                          onClick={() => setEmailStyle('light')}
+                        >
+                          <div className="style-preview light-preview">
+                            <div className="preview-header"></div>
+                            <div className="preview-code"></div>
+                            <div className="preview-btn"></div>
+                          </div>
+                          <span>Light Pro</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`style-option ${emailStyle === 'minimal' ? 'active' : ''}`}
+                          onClick={() => setEmailStyle('minimal')}
+                        >
+                          <div className="style-preview minimal-preview">
+                            <div className="preview-header"></div>
+                            <div className="preview-code"></div>
+                            <div className="preview-btn"></div>
+                          </div>
+                          <span>Minimal</span>
+                        </button>
+                      </div>
+
+                      <p className="text-gray-500 mt-4 mb-2">Email preview:</p>
+                    </>
+                  )}
+
+                  {selectedTemplateId && (
+                    <div className="selected-template-info mt-4">
+                      <p className="text-gray-500 mb-2">Selected template:</p>
+                      <div className="template-preview-box">
+                        <strong>{emailTemplates.find(t => t.id === selectedTemplateId)?.name}</strong>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Subject: {emailTemplates.find(t => t.id === selectedTemplateId)?.subject}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!selectedTemplateId && (
+                    <div className="email-template">
+                      <pre>{generateEmailTemplate(showEmailModal)}</pre>
+                    </div>
+                  )}
                 </>
               )}
             </div>

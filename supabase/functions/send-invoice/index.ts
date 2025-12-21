@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
@@ -17,6 +18,49 @@ interface InvoiceEmailRequest {
   dueDate: string
   notes?: string
   paymentUrl: string
+  // New fields for templates and tracking
+  invoiceId?: string
+  templateId?: string
+  templateSubject?: string
+  templateBody?: string
+}
+
+// Generate a unique tracking ID (64 hex characters)
+function generateTrackingId(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// Substitute template variables
+function substituteVariables(template: string, variables: Record<string, string>): string {
+  let result = template
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
+    result = result.replace(regex, value || '')
+  }
+  return result
+}
+
+// Wrap links for click tracking
+function wrapLinksForTracking(html: string, trackingId: string, baseUrl: string): string {
+  return html.replace(
+    /href="(https?:\/\/[^"]+)"/g,
+    (match, url) => {
+      if (url.includes('track-email')) return match
+      const trackUrl = `${baseUrl}/functions/v1/track-email-click?tid=${trackingId}&url=${encodeURIComponent(url)}`
+      return `href="${trackUrl}"`
+    }
+  )
+}
+
+// Add tracking pixel before </body>
+function addTrackingPixel(html: string, trackingId: string, baseUrl: string): string {
+  const pixel = `<img src="${baseUrl}/functions/v1/track-email-open?tid=${trackingId}" width="1" height="1" style="display:none;visibility:hidden;" alt="" />`
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${pixel}</body>`)
+  }
+  return html + pixel
 }
 
 serve(async (req) => {
@@ -34,8 +78,19 @@ serve(async (req) => {
       total,
       dueDate,
       notes,
-      paymentUrl
+      paymentUrl,
+      invoiceId,
+      templateId,
+      templateSubject,
+      templateBody
     }: InvoiceEmailRequest = await req.json()
+
+    // Get Supabase URL for tracking links
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    // Generate tracking ID
+    const trackingId = generateTrackingId()
 
     const formattedDate = new Date(dueDate).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -43,24 +98,49 @@ serve(async (req) => {
       day: 'numeric'
     })
 
-    const lineItemsHtml = lineItems.map(item => `
-      <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #374151; font-size: 14px;">
-          ${item.description}
-        </td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #6b7280; font-size: 14px; text-align: center;">
-          ${item.quantity}
-        </td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #6b7280; font-size: 14px; text-align: right;">
-          $${item.rate.toFixed(2)}
-        </td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #374151; font-size: 14px; text-align: right; font-weight: 600;">
-          $${(item.quantity * item.rate).toFixed(2)}
-        </td>
-      </tr>
-    `).join('')
+    // Prepare template variables for substitution
+    const variables: Record<string, string> = {
+      client_name: clientName || 'there',
+      project_name: projectName,
+      invoice_number: invoiceNumber,
+      invoice_amount: `$${total.toFixed(2)}`,
+      due_date: formattedDate,
+      preview_link: paymentUrl,
+      custom_message: notes || '',
+      current_date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    }
 
-    const htmlContent = `
+    let htmlContent: string
+    let emailSubject: string
+
+    // Check if using custom template
+    if (templateBody && templateSubject) {
+      htmlContent = substituteVariables(templateBody, variables)
+      emailSubject = substituteVariables(templateSubject, variables)
+    } else {
+      // Use default invoice template
+      const lineItemsHtml = lineItems.map(item => `
+        <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #374151; font-size: 14px;">
+            ${item.description}
+          </td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #6b7280; font-size: 14px; text-align: center;">
+            ${item.quantity}
+          </td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #6b7280; font-size: 14px; text-align: right;">
+            $${item.rate.toFixed(2)}
+          </td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #eef1f5; color: #374151; font-size: 14px; text-align: right; font-weight: 600;">
+            $${(item.quantity * item.rate).toFixed(2)}
+          </td>
+        </tr>
+      `).join('')
+
+      htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -180,6 +260,15 @@ serve(async (req) => {
 </body>
 </html>`
 
+      emailSubject = `Invoice ${invoiceNumber} - ${projectName}`
+    }
+
+    // Add tracking to email
+    if (supabaseUrl) {
+      htmlContent = wrapLinksForTracking(htmlContent, trackingId, supabaseUrl)
+      htmlContent = addTrackingPixel(htmlContent, trackingId, supabaseUrl)
+    }
+
     const textContent = `Invoice ${invoiceNumber}
 
 Hi ${clientName},
@@ -210,7 +299,7 @@ The Dev Side`
       body: JSON.stringify({
         from: 'The Dev Side <onboarding@resend.dev>',
         to: [to],
-        subject: `Invoice ${invoiceNumber} - ${projectName}`,
+        subject: emailSubject,
         html: htmlContent,
         text: textContent,
       }),
@@ -222,7 +311,27 @@ The Dev Side`
       throw new Error(data.message || 'Failed to send invoice')
     }
 
-    return new Response(JSON.stringify({ success: true, data }), {
+    // Record the sent email in database for tracking
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        await supabase.from('sent_emails').insert({
+          tracking_id: trackingId,
+          template_id: templateId || null,
+          recipient_email: to,
+          recipient_name: clientName || null,
+          subject: emailSubject,
+          invoice_id: invoiceId || null,
+          email_type: 'invoice',
+          variables: variables
+        })
+      } catch (dbError) {
+        console.error('Error recording sent email:', dbError)
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, data, trackingId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

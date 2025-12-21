@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
@@ -15,6 +16,53 @@ interface EmailRequest {
   accessCode: string
   portalUrl: string
   style?: 'dark' | 'light' | 'minimal'
+  // New fields for templates and tracking
+  templateId?: string
+  templateSubject?: string
+  templateBody?: string
+  projectId?: string
+  customMessage?: string
+}
+
+// Generate a unique tracking ID (64 hex characters)
+function generateTrackingId(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// Substitute template variables
+function substituteVariables(template: string, variables: Record<string, string>): string {
+  let result = template
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
+    result = result.replace(regex, value || '')
+  }
+  return result
+}
+
+// Wrap links for click tracking
+function wrapLinksForTracking(html: string, trackingId: string, baseUrl: string): string {
+  return html.replace(
+    /href="(https?:\/\/[^"]+)"/g,
+    (match, url) => {
+      // Don't wrap mailto: links or tracking pixel
+      if (url.includes('track-email')) return match
+      const trackUrl = `${baseUrl}/functions/v1/track-email-click?tid=${trackingId}&url=${encodeURIComponent(url)}`
+      return `href="${trackUrl}"`
+    }
+  )
+}
+
+// Add tracking pixel before </body>
+function addTrackingPixel(html: string, trackingId: string, baseUrl: string): string {
+  const pixel = `<img src="${baseUrl}/functions/v1/track-email-open?tid=${trackingId}" width="1" height="1" style="display:none;visibility:hidden;" alt="" />`
+
+  // Try to insert before </body>, otherwise append at end
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${pixel}</body>`)
+  }
+  return html + pixel
 }
 
 // Style 1: Dark Tech (Original - Cyan/Green gradients on dark)
@@ -346,20 +394,74 @@ serve(async (req) => {
   }
 
   try {
-    const { to, clientName, projectName, previewUrl, accessCode, portalUrl, style = 'dark' }: EmailRequest = await req.json()
+    const {
+      to,
+      clientName,
+      projectName,
+      previewUrl,
+      accessCode,
+      portalUrl,
+      style = 'dark',
+      templateId,
+      templateSubject,
+      templateBody,
+      projectId,
+      customMessage
+    }: EmailRequest = await req.json()
+
+    // Get Supabase URL for tracking links
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    // Generate tracking ID
+    const trackingId = generateTrackingId()
+
+    // Prepare template variables for substitution
+    const variables: Record<string, string> = {
+      client_name: clientName || 'there',
+      project_name: projectName,
+      access_code: accessCode.toUpperCase(),
+      preview_link: previewUrl,
+      portal_url: portalUrl,
+      custom_message: customMessage || '',
+      current_date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    }
 
     let htmlContent: string
-    switch (style) {
-      case 'light':
-        htmlContent = getLightProfessionalTemplate(clientName, projectName, accessCode, previewUrl, portalUrl)
-        break
-      case 'minimal':
-        htmlContent = getMinimalElegantTemplate(clientName, projectName, accessCode, previewUrl, portalUrl)
-        break
-      case 'dark':
-      default:
-        htmlContent = getDarkTechTemplate(clientName, projectName, accessCode, previewUrl, portalUrl)
-        break
+    let emailSubject: string
+
+    // Check if using custom template
+    if (templateBody && templateSubject) {
+      // Use custom template with variable substitution
+      htmlContent = substituteVariables(templateBody, variables)
+      emailSubject = substituteVariables(templateSubject, variables)
+    } else {
+      // Use built-in style templates
+      switch (style) {
+        case 'light':
+          htmlContent = getLightProfessionalTemplate(clientName, projectName, accessCode, previewUrl, portalUrl)
+          break
+        case 'minimal':
+          htmlContent = getMinimalElegantTemplate(clientName, projectName, accessCode, previewUrl, portalUrl)
+          break
+        case 'dark':
+        default:
+          htmlContent = getDarkTechTemplate(clientName, projectName, accessCode, previewUrl, portalUrl)
+          break
+      }
+      emailSubject = `Your ${projectName} Preview is Ready`
+    }
+
+    // Add tracking to email
+    if (supabaseUrl) {
+      // Wrap links for click tracking
+      htmlContent = wrapLinksForTracking(htmlContent, trackingId, supabaseUrl)
+      // Add tracking pixel
+      htmlContent = addTrackingPixel(htmlContent, trackingId, supabaseUrl)
     }
 
     const textContent = getTextContent(clientName, projectName, accessCode, previewUrl, portalUrl)
@@ -373,7 +475,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: 'Preview Portal <onboarding@resend.dev>',
         to: [to],
-        subject: `Your ${projectName} Preview is Ready`,
+        subject: emailSubject,
         html: htmlContent,
         text: textContent,
       }),
@@ -385,7 +487,28 @@ serve(async (req) => {
       throw new Error(data.message || 'Failed to send email')
     }
 
-    return new Response(JSON.stringify({ success: true, data }), {
+    // Record the sent email in database for tracking
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        await supabase.from('sent_emails').insert({
+          tracking_id: trackingId,
+          template_id: templateId || null,
+          recipient_email: to,
+          recipient_name: clientName || null,
+          subject: emailSubject,
+          project_id: projectId || null,
+          email_type: 'preview',
+          variables: variables
+        })
+      } catch (dbError) {
+        // Log but don't fail the email send
+        console.error('Error recording sent email:', dbError)
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, data, trackingId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

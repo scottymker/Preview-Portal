@@ -234,3 +234,163 @@ export async function markInvoicePaid(id) {
   if (error) throw error
   return data
 }
+
+// ============ EMAIL TEMPLATE FUNCTIONS ============
+
+// Get all email templates
+export async function getAllEmailTemplates() {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Get templates by category
+export async function getEmailTemplatesByCategory(category) {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('category', category)
+    .order('is_default', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Get template by ID
+export async function getEmailTemplateById(id) {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Create email template
+export async function createEmailTemplate(template) {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .insert([template])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Update email template
+export async function updateEmailTemplate(id, updates) {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Delete email template
+export async function deleteEmailTemplate(id) {
+  const { error } = await supabase
+    .from('email_templates')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+// ============ EMAIL TRACKING FUNCTIONS ============
+
+// Get sent emails by project
+export async function getSentEmailsByProject(projectId) {
+  const { data, error } = await supabase
+    .from('sent_emails')
+    .select(`
+      *,
+      email_clicks (*)
+    `)
+    .eq('project_id', projectId)
+    .order('sent_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Get sent emails by invoice
+export async function getSentEmailsByInvoice(invoiceId) {
+  const { data, error } = await supabase
+    .from('sent_emails')
+    .select(`
+      *,
+      email_clicks (*)
+    `)
+    .eq('invoice_id', invoiceId)
+    .order('sent_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Get all sent emails with tracking data
+export async function getAllSentEmails() {
+  const { data, error } = await supabase
+    .from('sent_emails')
+    .select(`
+      *,
+      email_clicks (*)
+    `)
+    .order('sent_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Get email tracking stats summary
+export async function getEmailTrackingStats() {
+  const { data, error } = await supabase
+    .from('sent_emails')
+    .select('id, opened_at, open_count, email_clicks(id)')
+
+  if (error) throw error
+
+  const totalSent = data.length
+  const totalOpened = data.filter(e => e.opened_at).length
+  const totalClicks = data.reduce((sum, e) => sum + (e.email_clicks?.length || 0), 0)
+
+  return {
+    totalSent,
+    totalOpened,
+    totalClicks,
+    openRate: totalSent > 0 ? ((totalOpened / totalSent) * 100).toFixed(1) : 0,
+    clickRate: totalOpened > 0 ? ((totalClicks / totalOpened) * 100).toFixed(1) : 0
+  }
+}
+
+// Get tracking stats for a specific project
+export async function getProjectEmailStats(projectId) {
+  const { data, error } = await supabase
+    .from('sent_emails')
+    .select('id, opened_at, open_count, email_clicks(id)')
+    .eq('project_id', projectId)
+
+  if (error) throw error
+
+  const totalSent = data.length
+  const totalOpened = data.filter(e => e.opened_at).length
+  const totalClicks = data.reduce((sum, e) => sum + (e.email_clicks?.length || 0), 0)
+
+  return {
+    totalSent,
+    totalOpened,
+    totalClicks,
+    openRate: totalSent > 0 ? ((totalOpened / totalSent) * 100).toFixed(1) : 0
+  }
+}
