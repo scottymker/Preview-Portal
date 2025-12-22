@@ -434,6 +434,15 @@
   text-decoration: underline;
 }
 
+.lead-no-website {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--success);
+  font-weight: 500;
+}
+
 .lead-badges {
   display: flex;
   gap: 0.5rem;

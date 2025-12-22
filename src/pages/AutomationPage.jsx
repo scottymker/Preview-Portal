@@ -403,7 +403,9 @@ export default function AutomationPage() {
                   {leads.slice(0, 5).map(lead => (
                     <div key={lead.id} className="recent-lead-item">
                       <div className="recent-lead-info">
-                        <span className="recent-lead-name">{lead.business_name || new URL(lead.business_url).hostname}</span>
+                        <span className="recent-lead-name">
+                          {lead.business_name || (lead.business_url ? new URL(lead.business_url).hostname : 'No website')}
+                        </span>
                         <span className={`workflow-badge ${lead.workflow_status}`}>{lead.workflow_status.replace('_', ' ')}</span>
                       </div>
                       <span className="recent-lead-date">{new Date(lead.created_at).toLocaleDateString()}</span>
@@ -471,15 +473,19 @@ export default function AutomationPage() {
                         >
                           <div className="lead-info">
                             <h4>{lead.business_name || 'Unknown Business'}</h4>
-                            <a
-                              href={lead.business_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="lead-url"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {new URL(lead.business_url).hostname} <ExternalLink size={12} />
-                            </a>
+                            {lead.business_url ? (
+                              <a
+                                href={lead.business_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="lead-url"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {new URL(lead.business_url).hostname} <ExternalLink size={12} />
+                              </a>
+                            ) : (
+                              <span className="lead-no-website">No website - great lead!</span>
+                            )}
                           </div>
                           <div className="lead-badges">
                             <span className={`workflow-badge ${lead.workflow_status}`}>

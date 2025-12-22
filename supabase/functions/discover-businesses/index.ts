@@ -78,24 +78,30 @@ serve(async (req) => {
       console.log(`Found ${places.length} places, checking for websites...`)
 
       let processed = 0
+      let withWebsite = 0
+      let withoutWebsite = 0
+      const errors: string[] = []
+      const debugInfo: string[] = []
+
       for (const place of places) {
         if (processed >= limit) break
 
         // Skip if business has a website
         if (place.websiteUri) {
+          withWebsite++
           console.log(`Skipping ${place.displayName?.text} - has website: ${place.websiteUri}`)
           continue
         }
 
-        // Skip if business is not operational
-        if (place.businessStatus && place.businessStatus !== 'OPERATIONAL') {
-          continue
-        }
+        withoutWebsite++
 
         const businessName = place.displayName?.text || 'Unknown Business'
         const businessAddress = place.formattedAddress || ''
         const businessPhone = place.nationalPhoneNumber || null
         const businessCategory = place.types?.[0]?.replace(/_/g, ' ') || query
+
+        // Log business status for debugging
+        debugInfo.push(`${businessName} (Status: ${place.businessStatus || 'not set'})`)
 
         // Check if this business already exists (by name + address)
         const { data: existing } = await supabaseClient
@@ -106,9 +112,11 @@ serve(async (req) => {
           .maybeSingle()
 
         if (existing) {
-          console.log(`Skipping ${businessName} - already exists`)
+          debugInfo.push(`  -> Skipped: already exists`)
           continue
         }
+
+        debugInfo.push(`  -> Inserting...`)
 
         // Create lead for business without website
         const { data: lead, error } = await supabaseClient
@@ -132,10 +140,13 @@ serve(async (req) => {
           .select()
           .single()
 
-        if (!error && lead) {
+        if (error) {
+          errors.push(`${businessName}: ${error.message}`)
+          debugInfo.push(`  -> ERROR: ${error.message}`)
+        } else if (lead) {
           leads.push(lead)
           processed++
-          console.log(`Added lead: ${businessName} (no website)`)
+          debugInfo.push(`  -> SUCCESS`)
         }
       }
 
@@ -144,7 +155,10 @@ serve(async (req) => {
           success: true,
           leads,
           count: leads.length,
-          message: `Found ${leads.length} businesses without websites`
+          totalFound: places.length,
+          withWebsite,
+          withoutWebsite,
+          message: `Found ${places.length} businesses: ${withWebsite} have websites, ${withoutWebsite} don't. Added ${leads.length} new leads.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
