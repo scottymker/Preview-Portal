@@ -181,10 +181,19 @@ serve(async (req) => {
           const skipKeywords = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
                                  'court case', 'docket', 'filing', 'administrative rule',
                                  'state law', 'federal law', 'license lookup', 'verify license',
-                                 // Job-related
+                                 // Job-related - comprehensive list
                                  'jobs in', 'job search', 'careers at', 'hiring', 'job openings',
-                                 'salary', 'salaries', 'pay rate', 'hourly rate', 'wage',
+                                 'salary', 'salaries', 'pay rate', 'hourly rate', 'wage', 'wages',
                                  'apply now', 'job listing', 'employment', 'apprentice',
+                                 'job posting', 'now hiring', 'we are hiring', 'join our team',
+                                 'career opportunities', 'job opportunities', 'open positions',
+                                 'work for us', 'employee', 'employees', 'per hour', '/hr',
+                                 'annual salary', 'compensation', 'benefits package', 'full-time',
+                                 'part-time', 'job description', 'qualifications', 'requirements',
+                                 'resume', 'cover letter', 'interview', 'recruiter', 'recruiting',
+                                 'talent acquisition', 'workforce', 'staffing', 'temp agency',
+                                 'how much do', 'how much does', 'average pay', 'median salary',
+                                 'income', 'earning', 'earnings', 'make per', 'paid per',
                                  // News-related
                                  'news article', 'breaking news', 'press release']
           const titleLower = item.title.toLowerCase()
@@ -305,9 +314,19 @@ serve(async (req) => {
             const skipKeywords2 = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
                                    'court case', 'docket', 'filing', 'administrative rule',
                                    'state law', 'federal law', 'license lookup', 'verify license',
+                                   // Job-related - comprehensive list
                                    'jobs in', 'job search', 'careers at', 'hiring', 'job openings',
-                                   'salary', 'salaries', 'pay rate', 'hourly rate', 'wage',
+                                   'salary', 'salaries', 'pay rate', 'hourly rate', 'wage', 'wages',
                                    'apply now', 'job listing', 'employment', 'apprentice',
+                                   'job posting', 'now hiring', 'we are hiring', 'join our team',
+                                   'career opportunities', 'job opportunities', 'open positions',
+                                   'work for us', 'employee', 'employees', 'per hour', '/hr',
+                                   'annual salary', 'compensation', 'benefits package', 'full-time',
+                                   'part-time', 'job description', 'qualifications', 'requirements',
+                                   'resume', 'cover letter', 'interview', 'recruiter', 'recruiting',
+                                   'talent acquisition', 'workforce', 'staffing', 'temp agency',
+                                   'how much do', 'how much does', 'average pay', 'median salary',
+                                   'income', 'earning', 'earnings', 'make per', 'paid per',
                                    'news article', 'breaking news', 'press release']
             const titleLower = item.title.toLowerCase()
             const snippetLower = item.snippet.toLowerCase()
