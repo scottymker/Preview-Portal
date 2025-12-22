@@ -197,6 +197,22 @@ export default function AutomationPage() {
     }
   }
 
+  const handleDeleteAllLeads = async () => {
+    if (!confirm(`Delete all ${leads.length} leads? This cannot be undone.`)) return
+
+    try {
+      // Delete all leads one by one
+      for (const lead of leads) {
+        await deleteAutomationLead(lead.id)
+      }
+      setLeads([])
+    } catch (error) {
+      console.error('Error deleting all leads:', error)
+      // Reload to get current state
+      loadData()
+    }
+  }
+
   const filteredLeads = leads.filter(lead => {
     if (statusFilter === 'all') return true
     return lead.workflow_status === statusFilter
@@ -376,7 +392,8 @@ export default function AutomationPage() {
             {/* Leads Tab */}
             {activeTab === 'leads' && (
               <div className="leads-section">
-                <div className="leads-filters">
+                <div className="leads-header-bar">
+                  <div className="leads-filters">
                   <button
                     className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
                     onClick={() => setStatusFilter('all')}
@@ -397,6 +414,15 @@ export default function AutomationPage() {
                     className={`filter-btn ${statusFilter === 'ready_to_send' ? 'active' : ''}`}
                     onClick={() => setStatusFilter('ready_to_send')}
                   >Ready ({stats.readyToSend})</button>
+                  </div>
+                  {leads.length > 0 && (
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={handleDeleteAllLeads}
+                    >
+                      <Trash2 size={14} /> Delete All
+                    </button>
+                  )}
                 </div>
 
                 <div className="leads-list">

@@ -129,12 +129,46 @@ serve(async (req) => {
                               'google.com', 'maps.google.com', 'instagram.com', 'twitter.com',
                               'pinterest.com', 'youtube.com', 'amazon.com', 'ebay.com',
                               'wikipedia.org', 'bbb.org', 'angieslist.com', 'thumbtack.com',
-                              'homeadvisor.com', 'houzz.com', 'nextdoor.com']
+                              'homeadvisor.com', 'houzz.com', 'nextdoor.com',
+                              // Government sites
+                              '.gov', 'state.sd.us', 'state.mn.us', 'state.nd.us', 'state.ia.us',
+                              'state.ne.us', 'state.wy.us', 'state.mt.us', 'usa.gov',
+                              // Legal/court sites
+                              'justia.com', 'findlaw.com', 'avvo.com', 'lawyers.com',
+                              'martindale.com', 'law.cornell.edu', 'casetext.com',
+                              'courtlistener.com', 'leagle.com', 'casemine.com',
+                              'dockets.justia.com', 'law.justia.com', 'uscode.house.gov',
+                              // Directories and aggregators
+                              'manta.com', 'chamberofcommerce.com', 'merchantcircle.com',
+                              'superpages.com', 'whitepages.com', 'citysearch.com',
+                              'mapquest.com', 'foursquare.com', 'tripadvisor.com',
+                              // Educational
+                              '.edu', 'mitchelltech.edu',
+                              // News/media
+                              'patch.com', 'argusleader.com', 'keloland.com']
 
           const url = new URL(item.link)
           const domain = url.hostname.replace('www.', '')
+          const fullUrl = item.link.toLowerCase()
 
-          if (skipDomains.some(skip => domain.includes(skip))) {
+          // Skip if domain matches blocked list
+          if (skipDomains.some(skip => domain.includes(skip) || fullUrl.includes(skip))) {
+            continue
+          }
+
+          // Skip government TLDs
+          if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
+            continue
+          }
+
+          // Skip pages that look like legal documents or regulations
+          const legalKeywords = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
+                                 'court case', 'docket', 'filing', 'administrative rule',
+                                 'state law', 'federal law', 'license lookup', 'verify license']
+          const titleLower = item.title.toLowerCase()
+          const snippetLower = item.snippet.toLowerCase()
+
+          if (legalKeywords.some(kw => titleLower.includes(kw) || snippetLower.includes(kw))) {
             continue
           }
 
@@ -202,12 +236,46 @@ serve(async (req) => {
                                 'google.com', 'maps.google.com', 'instagram.com', 'twitter.com',
                                 'pinterest.com', 'youtube.com', 'amazon.com', 'ebay.com',
                                 'wikipedia.org', 'bbb.org', 'angieslist.com', 'thumbtack.com',
-                                'homeadvisor.com', 'houzz.com', 'nextdoor.com']
+                                'homeadvisor.com', 'houzz.com', 'nextdoor.com',
+                                // Government sites
+                                '.gov', 'state.sd.us', 'state.mn.us', 'state.nd.us', 'state.ia.us',
+                                'state.ne.us', 'state.wy.us', 'state.mt.us', 'usa.gov',
+                                // Legal/court sites
+                                'justia.com', 'findlaw.com', 'avvo.com', 'lawyers.com',
+                                'martindale.com', 'law.cornell.edu', 'casetext.com',
+                                'courtlistener.com', 'leagle.com', 'casemine.com',
+                                'dockets.justia.com', 'law.justia.com', 'uscode.house.gov',
+                                // Directories and aggregators
+                                'manta.com', 'chamberofcommerce.com', 'merchantcircle.com',
+                                'superpages.com', 'whitepages.com', 'citysearch.com',
+                                'mapquest.com', 'foursquare.com', 'tripadvisor.com',
+                                // Educational
+                                '.edu', 'mitchelltech.edu',
+                                // News/media
+                                'patch.com', 'argusleader.com', 'keloland.com']
 
             const url = new URL(item.link)
             const domain = url.hostname.replace('www.', '')
+            const fullUrl = item.link.toLowerCase()
 
-            if (skipDomains.some(skip => domain.includes(skip))) {
+            // Skip if domain matches blocked list
+            if (skipDomains.some(skip => domain.includes(skip) || fullUrl.includes(skip))) {
+              continue
+            }
+
+            // Skip government TLDs
+            if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
+              continue
+            }
+
+            // Skip pages that look like legal documents or regulations
+            const legalKeywords = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
+                                   'court case', 'docket', 'filing', 'administrative rule',
+                                   'state law', 'federal law', 'license lookup', 'verify license']
+            const titleLower = item.title.toLowerCase()
+            const snippetLower = item.snippet.toLowerCase()
+
+            if (legalKeywords.some(kw => titleLower.includes(kw) || snippetLower.includes(kw))) {
               continue
             }
 
