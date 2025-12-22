@@ -52,7 +52,8 @@ export default function AutomationPage() {
   const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
-    const saved = localStorage.getItem('previewPortalAuth')
+    // Use same session storage as AdminPage
+    const saved = sessionStorage.getItem('admin_authenticated')
     if (saved === 'true') {
       setIsAuthenticated(true)
     }
@@ -69,7 +70,7 @@ export default function AutomationPage() {
     const isValid = await verifyAdminPassword(password)
     if (isValid) {
       setIsAuthenticated(true)
-      localStorage.setItem('previewPortalAuth', 'true')
+      sessionStorage.setItem('admin_authenticated', 'true')
       setLoginError('')
     } else {
       setLoginError('Invalid password')
