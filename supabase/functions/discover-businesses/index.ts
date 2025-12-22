@@ -91,13 +91,16 @@ serve(async (req) => {
         )
       }
 
-      // Build search query
+      // Build search query - be more specific
       let searchQuery = query
       if (location) {
-        searchQuery = `${query} ${location}`
+        searchQuery = `"${query}" ${location}`
       }
       // Add terms to find small businesses with websites
-      searchQuery = `${searchQuery} small business website`
+      searchQuery = `${searchQuery} local business`
+
+      // Store original query terms for relevance checking
+      const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 2)
 
       // Call Google Custom Search API
       const searchUrl = new URL('https://www.googleapis.com/customsearch/v1')
@@ -145,7 +148,20 @@ serve(async (req) => {
                               // Educational
                               '.edu', 'mitchelltech.edu',
                               // News/media
-                              'patch.com', 'argusleader.com', 'keloland.com']
+                              'patch.com', 'argusleader.com', 'keloland.com', 'mykxlg.com',
+                              'dakotanewsnow.com', 'kelo.com', 'ksfy.com',
+                              // Job sites
+                              'ziprecruiter.com', 'indeed.com', 'monster.com', 'glassdoor.com',
+                              'careerbuilder.com', 'simplyhired.com', 'snagajob.com',
+                              'jobs.com', 'joblist.com', 'jooble.org', 'neuvoo.com',
+                              'kelolandemployment.com', 'readysethire.com', 'salary.com',
+                              'payscale.com', 'comparably.com', 'levels.fyi',
+                              // Review sites
+                              'trustpilot.com', 'sitejabber.com', 'consumeraffairs.com',
+                              'complaintsboard.com', 'pissedconsumer.com',
+                              // Generic/aggregator sites
+                              'craigslist.org', 'kijiji.ca', 'gumtree.com', 'olx.com',
+                              'bizjournals.com', 'inc.com', 'forbes.com', 'entrepreneur.com']
 
           const url = new URL(item.link)
           const domain = url.hostname.replace('www.', '')
@@ -161,14 +177,29 @@ serve(async (req) => {
             continue
           }
 
-          // Skip pages that look like legal documents or regulations
-          const legalKeywords = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
+          // Skip pages that look like legal documents, job listings, or news
+          const skipKeywords = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
                                  'court case', 'docket', 'filing', 'administrative rule',
-                                 'state law', 'federal law', 'license lookup', 'verify license']
+                                 'state law', 'federal law', 'license lookup', 'verify license',
+                                 // Job-related
+                                 'jobs in', 'job search', 'careers at', 'hiring', 'job openings',
+                                 'salary', 'salaries', 'pay rate', 'hourly rate', 'wage',
+                                 'apply now', 'job listing', 'employment', 'apprentice',
+                                 // News-related
+                                 'news article', 'breaking news', 'press release']
           const titleLower = item.title.toLowerCase()
           const snippetLower = item.snippet.toLowerCase()
 
-          if (legalKeywords.some(kw => titleLower.includes(kw) || snippetLower.includes(kw))) {
+          if (skipKeywords.some(kw => titleLower.includes(kw) || snippetLower.includes(kw))) {
+            continue
+          }
+
+          // Check relevance - at least one query term should appear in title, snippet, or URL
+          const combinedText = `${titleLower} ${snippetLower} ${fullUrl}`
+          const isRelevant = queryTerms.some(term => combinedText.includes(term))
+
+          if (!isRelevant && queryTerms.length > 0) {
+            console.log(`Skipping irrelevant result: ${item.title}`)
             continue
           }
 
@@ -232,50 +263,63 @@ serve(async (req) => {
 
         for (const item of additionalItems) {
           try {
-            const skipDomains = ['facebook.com', 'yelp.com', 'yellowpages.com', 'linkedin.com',
+            const skipDomains2 = ['facebook.com', 'yelp.com', 'yellowpages.com', 'linkedin.com',
                                 'google.com', 'maps.google.com', 'instagram.com', 'twitter.com',
                                 'pinterest.com', 'youtube.com', 'amazon.com', 'ebay.com',
                                 'wikipedia.org', 'bbb.org', 'angieslist.com', 'thumbtack.com',
                                 'homeadvisor.com', 'houzz.com', 'nextdoor.com',
-                                // Government sites
                                 '.gov', 'state.sd.us', 'state.mn.us', 'state.nd.us', 'state.ia.us',
                                 'state.ne.us', 'state.wy.us', 'state.mt.us', 'usa.gov',
-                                // Legal/court sites
                                 'justia.com', 'findlaw.com', 'avvo.com', 'lawyers.com',
                                 'martindale.com', 'law.cornell.edu', 'casetext.com',
                                 'courtlistener.com', 'leagle.com', 'casemine.com',
                                 'dockets.justia.com', 'law.justia.com', 'uscode.house.gov',
-                                // Directories and aggregators
                                 'manta.com', 'chamberofcommerce.com', 'merchantcircle.com',
                                 'superpages.com', 'whitepages.com', 'citysearch.com',
                                 'mapquest.com', 'foursquare.com', 'tripadvisor.com',
-                                // Educational
                                 '.edu', 'mitchelltech.edu',
-                                // News/media
-                                'patch.com', 'argusleader.com', 'keloland.com']
+                                'patch.com', 'argusleader.com', 'keloland.com', 'mykxlg.com',
+                                'dakotanewsnow.com', 'kelo.com', 'ksfy.com',
+                                'ziprecruiter.com', 'indeed.com', 'monster.com', 'glassdoor.com',
+                                'careerbuilder.com', 'simplyhired.com', 'snagajob.com',
+                                'jobs.com', 'joblist.com', 'jooble.org', 'neuvoo.com',
+                                'kelolandemployment.com', 'readysethire.com', 'salary.com',
+                                'payscale.com', 'comparably.com', 'levels.fyi',
+                                'trustpilot.com', 'sitejabber.com', 'consumeraffairs.com',
+                                'complaintsboard.com', 'pissedconsumer.com',
+                                'craigslist.org', 'kijiji.ca', 'gumtree.com', 'olx.com',
+                                'bizjournals.com', 'inc.com', 'forbes.com', 'entrepreneur.com']
 
             const url = new URL(item.link)
             const domain = url.hostname.replace('www.', '')
             const fullUrl = item.link.toLowerCase()
 
-            // Skip if domain matches blocked list
-            if (skipDomains.some(skip => domain.includes(skip) || fullUrl.includes(skip))) {
+            if (skipDomains2.some(skip => domain.includes(skip) || fullUrl.includes(skip))) {
               continue
             }
 
-            // Skip government TLDs
             if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
               continue
             }
 
-            // Skip pages that look like legal documents or regulations
-            const legalKeywords = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
+            const skipKeywords2 = ['regulation', 'statute', 'ordinance', 'code of', 'legal notice',
                                    'court case', 'docket', 'filing', 'administrative rule',
-                                   'state law', 'federal law', 'license lookup', 'verify license']
+                                   'state law', 'federal law', 'license lookup', 'verify license',
+                                   'jobs in', 'job search', 'careers at', 'hiring', 'job openings',
+                                   'salary', 'salaries', 'pay rate', 'hourly rate', 'wage',
+                                   'apply now', 'job listing', 'employment', 'apprentice',
+                                   'news article', 'breaking news', 'press release']
             const titleLower = item.title.toLowerCase()
             const snippetLower = item.snippet.toLowerCase()
 
-            if (legalKeywords.some(kw => titleLower.includes(kw) || snippetLower.includes(kw))) {
+            if (skipKeywords2.some(kw => titleLower.includes(kw) || snippetLower.includes(kw))) {
+              continue
+            }
+
+            const combinedText = `${titleLower} ${snippetLower} ${fullUrl}`
+            const isRelevant = queryTerms.some(term => combinedText.includes(term))
+
+            if (!isRelevant && queryTerms.length > 0) {
               continue
             }
 
