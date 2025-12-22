@@ -47,6 +47,7 @@ export default function AutomationPage() {
   const [searchLocation, setSearchLocation] = useState('')
   const [searchLimit, setSearchLimit] = useState(10)
   const [isDiscovering, setIsDiscovering] = useState(false)
+  const [discoveryError, setDiscoveryError] = useState(null)
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState('all')
@@ -148,6 +149,7 @@ export default function AutomationPage() {
     if (!searchQuery.trim() || !searchLocation.trim()) return
 
     setIsDiscovering(true)
+    setDiscoveryError(null)
     try {
       const result = await runDiscovery({
         query: searchQuery,
@@ -163,6 +165,7 @@ export default function AutomationPage() {
       }
     } catch (error) {
       console.error('Error finding businesses without websites:', error)
+      setDiscoveryError(error.message || 'Failed to find businesses. Please try again.')
     }
     setIsDiscovering(false)
   }
@@ -707,6 +710,12 @@ export default function AutomationPage() {
                       <Target size={24} />
                       <p>Find local businesses on Google Maps that don't have a website listed. These are great leads - they definitely need one!</p>
                     </div>
+                    {discoveryError && (
+                      <div className="discovery-error">
+                        <AlertCircle size={18} />
+                        <span>{discoveryError}</span>
+                      </div>
+                    )}
                     <div className="form-row">
                       <div className="form-group">
                         <label>Business Type</label>

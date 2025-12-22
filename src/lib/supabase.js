@@ -581,6 +581,12 @@ export async function runDiscovery(params) {
   })
 
   if (error) throw error
+
+  // Check if the response contains an error message from the Edge Function
+  if (data?.error) {
+    throw new Error(data.error)
+  }
+
   return data
 }
 
