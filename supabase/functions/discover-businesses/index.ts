@@ -11,6 +11,7 @@ interface DiscoveryRequest {
   location?: string        // Location to search
   limit?: number          // Number of results (default 10)
   manualUrls?: string[]   // Manual URLs to add
+  findWithoutWebsites?: boolean  // Find businesses without websites via Google Places
 }
 
 interface GoogleSearchResult {
@@ -32,9 +33,122 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { query, location, limit = 10, manualUrls } = await req.json() as DiscoveryRequest
+    const { query, location, limit = 10, manualUrls, findWithoutWebsites } = await req.json() as DiscoveryRequest
 
     const leads: any[] = []
+
+    // Handle finding businesses without websites via Google Places API
+    if (findWithoutWebsites && query && location) {
+      const GOOGLE_API_KEY = Deno.env.get('GOOGLE_SEARCH_API_KEY')
+
+      if (!GOOGLE_API_KEY) {
+        return new Response(
+          JSON.stringify({ error: 'Google API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      console.log('Finding businesses without websites:', query, location)
+
+      // Use Places API (New) - Text Search
+      const searchResponse = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.businessStatus'
+        },
+        body: JSON.stringify({
+          textQuery: `${query} in ${location}`,
+          maxResultCount: Math.min(limit * 3, 20) // Request more to account for filtering
+        })
+      })
+
+      const searchData = await searchResponse.json()
+
+      if (searchData.error) {
+        console.error('Places API error:', searchData.error)
+        return new Response(
+          JSON.stringify({ error: searchData.error.message || 'Places API error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const places = searchData.places || []
+      console.log(`Found ${places.length} places, checking for websites...`)
+
+      let processed = 0
+      for (const place of places) {
+        if (processed >= limit) break
+
+        // Skip if business has a website
+        if (place.websiteUri) {
+          console.log(`Skipping ${place.displayName?.text} - has website: ${place.websiteUri}`)
+          continue
+        }
+
+        // Skip if business is not operational
+        if (place.businessStatus && place.businessStatus !== 'OPERATIONAL') {
+          continue
+        }
+
+        const businessName = place.displayName?.text || 'Unknown Business'
+        const businessAddress = place.formattedAddress || ''
+        const businessPhone = place.nationalPhoneNumber || null
+        const businessCategory = place.types?.[0]?.replace(/_/g, ' ') || query
+
+        // Check if this business already exists (by name + address)
+        const { data: existing } = await supabaseClient
+          .from('automation_leads')
+          .select('id')
+          .eq('business_name', businessName)
+          .eq('business_address', businessAddress)
+          .maybeSingle()
+
+        if (existing) {
+          console.log(`Skipping ${businessName} - already exists`)
+          continue
+        }
+
+        // Create lead for business without website
+        const { data: lead, error } = await supabaseClient
+          .from('automation_leads')
+          .insert({
+            business_name: businessName,
+            business_url: null,  // No website!
+            business_phone: businessPhone,
+            business_address: businessAddress,
+            business_category: businessCategory,
+            source: 'google_places',
+            source_query: query,
+            source_location: location,
+            workflow_status: 'discovered',
+            analysis_status: 'not_applicable',  // Can't analyze - no website
+            generation_status: 'pending',
+            needs_refresh: true,  // They need a website!
+            refresh_reasons: ['Business has no website'],
+            discovered_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (!error && lead) {
+          leads.push(lead)
+          processed++
+          console.log(`Added lead: ${businessName} (no website)`)
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          leads,
+          count: leads.length,
+          message: `Found ${leads.length} businesses without websites`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Handle manual URL additions
     if (manualUrls && manualUrls.length > 0) {

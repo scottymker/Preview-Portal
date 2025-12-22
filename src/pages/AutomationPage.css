@@ -629,6 +629,29 @@
   color: var(--gray-400);
 }
 
+.no-website-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.no-website-info svg {
+  flex-shrink: 0;
+  color: var(--success);
+}
+
+.no-website-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  line-height: 1.5;
+}
+
 .discover-tips {
   margin-top: 2rem;
   padding-top: 2rem;

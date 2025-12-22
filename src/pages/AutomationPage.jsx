@@ -41,7 +41,7 @@ export default function AutomationPage() {
   const [expandedLead, setExpandedLead] = useState(null)
 
   // Discovery form state
-  const [discoveryMode, setDiscoveryMode] = useState('manual') // 'manual', 'search'
+  const [discoveryMode, setDiscoveryMode] = useState('manual') // 'manual', 'search', 'no_website'
   const [manualUrl, setManualUrl] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchLocation, setSearchLocation] = useState('')
@@ -139,6 +139,30 @@ export default function AutomationPage() {
       }
     } catch (error) {
       console.error('Error running discovery:', error)
+    }
+    setIsDiscovering(false)
+  }
+
+  const handleFindWithoutWebsites = async (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim() || !searchLocation.trim()) return
+
+    setIsDiscovering(true)
+    try {
+      const result = await runDiscovery({
+        query: searchQuery,
+        location: searchLocation,
+        limit: searchLimit,
+        findWithoutWebsites: true
+      })
+
+      if (result?.leads) {
+        setLeads(prev => [...result.leads, ...prev])
+        setSearchQuery('')
+        setSearchLocation('')
+      }
+    } catch (error) {
+      console.error('Error finding businesses without websites:', error)
     }
     setIsDiscovering(false)
   }
@@ -591,9 +615,15 @@ export default function AutomationPage() {
                   >
                     <Search size={18} /> Search for Businesses
                   </button>
+                  <button
+                    className={`mode-btn ${discoveryMode === 'no_website' ? 'active' : ''}`}
+                    onClick={() => setDiscoveryMode('no_website')}
+                  >
+                    <Target size={18} /> Find Without Websites
+                  </button>
                 </div>
 
-                {discoveryMode === 'manual' ? (
+                {discoveryMode === 'manual' && (
                   <form className="discover-form" onSubmit={handleManualAdd}>
                     <div className="form-group">
                       <label>Website URL</label>
@@ -618,7 +648,9 @@ export default function AutomationPage() {
                       )}
                     </button>
                   </form>
-                ) : (
+                )}
+
+                {discoveryMode === 'search' && (
                   <form className="discover-form" onSubmit={handleSearch}>
                     <div className="form-row">
                       <div className="form-group">
@@ -664,6 +696,60 @@ export default function AutomationPage() {
                         <><Loader2 size={16} className="spin" /> Searching...</>
                       ) : (
                         <><Search size={16} /> Search</>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                {discoveryMode === 'no_website' && (
+                  <form className="discover-form" onSubmit={handleFindWithoutWebsites}>
+                    <div className="no-website-info">
+                      <Target size={24} />
+                      <p>Find local businesses on Google Maps that don't have a website listed. These are great leads - they definitely need one!</p>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Business Type</label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="e.g., plumber, restaurant, dentist"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Location (Required)</label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="e.g., Sioux Falls, SD"
+                          value={searchLocation}
+                          onChange={(e) => setSearchLocation(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Results Limit</label>
+                      <select
+                        className="input"
+                        value={searchLimit}
+                        onChange={(e) => setSearchLimit(parseInt(e.target.value))}
+                      >
+                        <option value={5}>5 results</option>
+                        <option value={10}>10 results</option>
+                        <option value={20}>20 results</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isDiscovering || !searchQuery.trim() || !searchLocation.trim()}
+                    >
+                      {isDiscovering ? (
+                        <><Loader2 size={16} className="spin" /> Finding...</>
+                      ) : (
+                        <><Target size={16} /> Find Businesses Without Websites</>
                       )}
                     </button>
                   </form>
