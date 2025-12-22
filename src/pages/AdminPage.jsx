@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllProjectsWithComments, createProject, updateProject, deleteProject, verifyAdminPassword, updateComment, deleteComment, supabase, getAllEmailTemplates, getEmailTemplatesByCategory, getSentEmailsByProject } from '../lib/supabase'
-import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign, Upload, FolderArchive, FileText, MousePointerClick } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Trash2, Edit2, X, Check, Link, Loader2, MessageCircle, ChevronDown, ChevronRight, MapPin, Mail, Send, Eye, DollarSign, Upload, FolderArchive, FileText, MousePointerClick, Bot } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import './AdminPage.css'
 
@@ -435,6 +435,10 @@ The Dev Side`
             </nav>
           </div>
           <div className="header-actions">
+            <button className="btn btn-secondary" onClick={() => navigate('/admin/automation')}>
+              <Bot size={16} />
+              Automation
+            </button>
             <button className="btn btn-secondary" onClick={() => navigate('/admin/email')}>
               <Mail size={16} />
               Email

@@ -4,6 +4,7 @@ import PreviewPage from './pages/PreviewPage'
 import AdminPage from './pages/AdminPage'
 import BillingPage from './pages/BillingPage'
 import EmailPage from './pages/EmailPage'
+import AutomationPage from './pages/AutomationPage'
 import PaymentPage from './pages/PaymentPage'
 import './styles/index.css'
 
@@ -16,6 +17,7 @@ function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/billing" element={<BillingPage />} />
         <Route path="/admin/email" element={<EmailPage />} />
+        <Route path="/admin/automation" element={<AutomationPage />} />
         <Route path="/pay/:invoiceId" element={<PaymentPage />} />
       </Routes>
     </BrowserRouter>

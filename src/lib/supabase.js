@@ -394,3 +394,222 @@ export async function getProjectEmailStats(projectId) {
     openRate: totalSent > 0 ? ((totalOpened / totalSent) * 100).toFixed(1) : 0
   }
 }
+
+// ============ AUTOMATION FUNCTIONS ============
+
+// Get all automation leads
+export async function getAutomationLeads(filters = {}) {
+  let query = supabase
+    .from('automation_leads')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (filters.workflow_status) {
+    query = query.eq('workflow_status', filters.workflow_status)
+  }
+  if (filters.analysis_status) {
+    query = query.eq('analysis_status', filters.analysis_status)
+  }
+  if (filters.needs_refresh !== undefined) {
+    query = query.eq('needs_refresh', filters.needs_refresh)
+  }
+
+  const { data, error } = await query
+
+  if (error) throw error
+  return data
+}
+
+// Get single lead by ID
+export async function getAutomationLeadById(id) {
+  const { data, error } = await supabase
+    .from('automation_leads')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Create automation lead
+export async function createAutomationLead(lead) {
+  const { data, error } = await supabase
+    .from('automation_leads')
+    .insert([{
+      ...lead,
+      discovered_at: new Date().toISOString()
+    }])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Update automation lead
+export async function updateAutomationLead(id, updates) {
+  const { data, error } = await supabase
+    .from('automation_leads')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Delete automation lead
+export async function deleteAutomationLead(id) {
+  const { error } = await supabase
+    .from('automation_leads')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+// Get all automation jobs
+export async function getAutomationJobs(filters = {}) {
+  let query = supabase
+    .from('automation_jobs')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (filters.status) {
+    query = query.eq('status', filters.status)
+  }
+  if (filters.job_type) {
+    query = query.eq('job_type', filters.job_type)
+  }
+
+  const { data, error } = await query
+
+  if (error) throw error
+  return data
+}
+
+// Create automation job
+export async function createAutomationJob(job) {
+  const { data, error } = await supabase
+    .from('automation_jobs')
+    .insert([job])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Update automation job
+export async function updateAutomationJob(id, updates) {
+  const { data, error } = await supabase
+    .from('automation_jobs')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Get all automation schedules
+export async function getAutomationSchedules() {
+  const { data, error } = await supabase
+    .from('automation_schedules')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Create automation schedule
+export async function createAutomationSchedule(schedule) {
+  const { data, error } = await supabase
+    .from('automation_schedules')
+    .insert([schedule])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Update automation schedule
+export async function updateAutomationSchedule(id, updates) {
+  const { data, error } = await supabase
+    .from('automation_schedules')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Delete automation schedule
+export async function deleteAutomationSchedule(id) {
+  const { error } = await supabase
+    .from('automation_schedules')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+// Get website templates
+export async function getWebsiteTemplates() {
+  const { data, error } = await supabase
+    .from('website_templates')
+    .select('*')
+    .order('is_default', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// ============ AUTOMATION EDGE FUNCTION CALLS ============
+
+// Run discovery via Edge Function
+export async function runDiscovery(params) {
+  const { data, error } = await supabase.functions.invoke('discover-businesses', {
+    body: params
+  })
+
+  if (error) throw error
+  return data
+}
+
+// Run analysis on a lead via Edge Function
+export async function runAnalysis(leadId) {
+  const { data, error } = await supabase.functions.invoke('analyze-website', {
+    body: { leadId }
+  })
+
+  if (error) throw error
+  return data
+}
+
+// Run website generation via Edge Function
+export async function runGeneration(leadId) {
+  const { data, error } = await supabase.functions.invoke('generate-website', {
+    body: { leadId }
+  })
+
+  if (error) throw error
+  return data
+}
+
+// Run full automation pipeline
+export async function runAutomationPipeline(params) {
+  const { data, error } = await supabase.functions.invoke('run-automation-pipeline', {
+    body: params
+  })
+
+  if (error) throw error
+  return data
+}
